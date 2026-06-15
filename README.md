@@ -1,2 +1,2 @@
 # ContempSlangScrape
-This repository holds the phython script used to scrape data for my Bachelors thesis at the University of Mannheim.
+This repository holds the phython script used to scrape data for my Bachelors thesis at the University of Mannheim, with its deadline on 19th of June 2026. In the YouTube file specifically, the API placeholder has been restored to protect the sensitive data that is my API key. On request I can demonstrate how the script would work or screen-record a video and deactivate the key right after. Greetings! 
