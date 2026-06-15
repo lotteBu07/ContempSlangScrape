@@ -1,0 +1,169 @@
+"""
+Reddit Comment Corpus Scraper for Corpus Linguistics
+=====================================================
+Processes locally stored Reddit JSONL comment dumps
+(sourced from Pushshift / Academic Torrents) for
+keyword analysis across two discourse groups:
+  - Queer/Feminist subreddits
+  - Conservative/Right subreddits
+
+Data Protection Notice (GDPR Art. 89):
+  No personally identifiable information (PII) is stored.
+  Usernames and author fields present in the raw JSONL
+  are discarded before any data is saved. Only anonymised
+  comment text and non-personal metadata are retained.
+"""
+
+# ── Dependencies ─────────────────────────────────────────────────
+# pip install openpyxl
+# (no API key required — processes local JSONL files)
+
+import re, json, csv, os
+from collections import defaultdict
+from openpyxl import Workbook
+from openpyxl.styles import PatternFill, Font
+
+# ── Corpus Configuration ─────────────────────────────────────────
+# JSONL files sourced from Pushshift / Academic Torrents.
+# Each file contains one JSON object per line.
+
+CORPUS = {
+    "Queer/Feminist": [
+        "r_gay_comments.jsonl",
+        "r_bisexual_comments.jsonl",
+        "r_lgbt_comments.jsonl",
+        "r_asktransgender_comments.jsonl",
+        "r_Actuallesbians_comments.jsonl",
+        "r_Feminism_comments.jsonl",
+        "r_socialism_comments.jsonl",
+    ],
+    "Conservative/Right": [
+        "r_AskConservatives_comments.jsonl",
+        "r_MensRights_comments.jsonl",
+        "r_antifeminists_comments.jsonl",
+        "r_conservative_comments.jsonl",
+        "r_Republican_comments.jsonl",
+    ],
+}
+
+WINDOW = 10   # KWIC context tokens left/right
+
+# ── Keyword Patterns ─────────────────────────────────────────────
+# Special characters are preserved so that self-censored
+# spellings (c*nt, c**t, c.nt) are captured by the Cunt pattern.
+
+KEYWORDS = {
+    "Girl":  re.compile(r"\bgurls?\b|\bgirls?\b",  re.IGNORECASE),
+    "Real":  re.compile(r"\breal\b",                  re.IGNORECASE),
+    "Based": re.compile(r"\bbased\b",                 re.IGNORECASE),
+    "No bc": re.compile(r"\bno[,]?\s+bc\b",         re.IGNORECASE),
+    "Cunt":  re.compile(
+        r"\b(cunt\w*|cvnt\w*|c\*nt\w*|cu\*t\w*"
+        r"|c\*\*t\w*|c\.nt\w*|c-nt\w*|c_nt\w*|cnt\b)\b",
+        re.IGNORECASE
+    ),
+}
+
+# Lines matching these patterns are excluded (media / deleted)
+SKIP = re.compile(
+    r"^\s*(https?://\S+|\[deleted\]|\[removed\])\s*$",
+    re.IGNORECASE
+)
+
+# ── Text Cleaning ────────────────────────────────────────────────
+def clean_text(text: str) -> str:
+    """
+    Minimal cleaning for linguistic analysis.
+    Removes URLs and @mentions (PII risk).
+    Preserves special characters (* . - _) for censored variants.
+    """
+    text = re.sub(r"http\S+", " ", text or "")
+    text = re.sub(r"@\w+",    " ", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+# ── KWIC Extraction ──────────────────────────────────────────────
+def extract_kwic(text: str, pat) -> list:
+    """Return KWIC concordance lines (±WINDOW tokens)."""
+    tokens = text.split()
+    joined = " ".join(tokens)
+    results = []
+    for m in pat.finditer(joined):
+        pos   = len(joined[:m.start()].split())
+        left  = tokens[max(0, pos - WINDOW): pos]
+        right = tokens[pos + 1: pos + 1 + WINDOW]
+        results.append({
+            "matched_form": m.group(0),
+            "left":  ([""] * (WINDOW - len(left)))  + left,
+            "right": right + ([""] * (WINDOW - len(right))),
+        })
+    return results
+
+# ── Main Processing Loop ─────────────────────────────────────────
+def process_corpus(corpus: dict) -> tuple:
+    """
+    Iterates over all JSONL files, extracts keyword hits,
+    and returns anonymised comment records and KWIC lines.
+    Author fields present in raw JSONL are not stored (GDPR).
+    """
+    all_comments, kwic_records = [], []
+    counts = {g: {k: 0 for k in KEYWORDS} for g in corpus}
+    valid_totals = {g: 0 for g in corpus}
+
+    for group, files in corpus.items():
+        for fpath in files:
+            subreddit = fpath.replace("r_","r/").replace("_comments.jsonl","")
+            with open(fpath, errors="replace") as f:
+                for line in f:
+                    try: obj = json.loads(line.strip())
+                    except: continue
+                    body = obj.get("body", "")
+                    if not body or SKIP.match(body): continue
+
+                    text = clean_text(body)
+                    if not text: continue
+                    valid_totals[group] += 1
+
+                    import datetime
+                    ts = obj.get("created_utc")
+                    try:
+                        date = datetime.datetime.fromtimestamp(
+                            int(ts), datetime.UTC
+                        ).strftime("%Y-%m-%d")
+                    except: date = ""
+
+                    hit_kws = []
+                    for kw, pat in KEYWORDS.items():
+                        if pat.search(text):
+                            counts[group][kw] += 1
+                            hit_kws.append(kw)
+                            for hit in extract_kwic(text, pat):
+                                kwic_records.append({
+                                    "group":    group,
+                                    "subreddit": subreddit,
+                                    "keyword":  kw,
+                                    **{f"L{WINDOW-i}": hit["left"][i]
+                                       for i in range(WINDOW)},
+                                    "match":    hit["matched_form"],
+                                    **{f"R{i+1}": hit["right"][i]
+                                       for i in range(WINDOW)},
+                                    "full_text": text,
+                                })
+
+                    if hit_kws:
+                        # Store only anonymised fields — no username
+                        all_comments.append({
+                            "group":     group,
+                            "subreddit": subreddit,
+                            "date":      date,
+                            "score":     obj.get("score", ""),
+                            "depth":     0 if obj.get("parent_id","")
+                                            .startswith("t3_") else 1,
+                            "keywords":  ", ".join(hit_kws),
+                            "text":      text,
+                        })
+
+    return all_comments, kwic_records, counts, valid_totals
+
+# ── Normalised Frequency (per 100k) ──────────────────────────────
+def norm(count, total):
+    return round(count / total * 100_000, 1) if total else 0
