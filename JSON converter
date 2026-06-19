@@ -1,0 +1,171 @@
+"""
+json_to_xlsx.py
+---------------
+Convert JSON files from a fixed folder to Excel (.xlsx) format.
+GDPR-safe: personal/identifying fields are stripped before export.
+
+- Reads all .json files from INPUT_FOLDER
+- Saves the result to OUTPUT_FILE
+- Run: python json_to_xlsx.py
+
+Requirements:
+    pip install openpyxl pandas
+"""
+
+import json
+import sys
+from pathlib import Path
+
+import pandas as pd
+from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl.utils import get_column_letter
+
+# ---------------------------------------------------------------------------
+# CONFIGURE THESE TWO PATHS
+# ---------------------------------------------------------------------------
+INPUT_FOLDER = Path(r"C:\Users\lotte\AppData\Local\Programs\Microsoft VS Code\youtube_output")
+OUTPUT_FILE  = Path(r"C:\Users\lotte\AppData\Local\Programs\Microsoft VS Code\youtube_output\youtube_output.xlsx")
+# ---------------------------------------------------------------------------
+
+# GDPR filter — extend this list if your data contains other identifying fields.
+# Matching is case-insensitive and checks whether the term appears anywhere
+# in the (dot-notation) field name.
+GDPR_BLOCKED_TERMS = [
+    "author",
+    "username",
+    "user_name",
+    "userid",
+    "user_id",
+    "user_fullname",
+    "screen_name",
+    "display_name",
+    "account_name",
+    "handle",
+    "email",
+    "ip",
+    "ip_address",
+    "location",
+    "profile",
+    "avatar",
+    "profile_img",
+    "profile_image",
+    "channel_id",       # YouTube-specific
+    "channel_name",     # YouTube-specific
+    "commenter_id",
+    "subscriber",
+]
+
+
+def is_gdpr_field(field_name: str) -> bool:
+    name_lower = field_name.lower()
+    return any(term in name_lower for term in GDPR_BLOCKED_TERMS)
+
+
+def load_json(path: Path) -> list[dict]:
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    if isinstance(data, dict):
+        data = [data]
+    if not isinstance(data, list):
+        raise ValueError(f"{path.name}: expected a JSON array or object, got {type(data).__name__}")
+    return data
+
+
+def flatten_record(record: dict, parent_key: str = "", sep: str = ".") -> dict:
+    items = {}
+    for key, value in record.items():
+        new_key = f"{parent_key}{sep}{key}" if parent_key else key
+        if isinstance(value, dict):
+            items.update(flatten_record(value, new_key, sep))
+        elif isinstance(value, list):
+            items[new_key] = json.dumps(value, ensure_ascii=False)
+        else:
+            items[new_key] = value
+    return items
+
+
+def apply_gdpr_filter(records: list[dict]) -> tuple[list[dict], list[str]]:
+    if not records:
+        return records, []
+    sample = flatten_record(records[0])
+    removed = sorted(f for f in sample if is_gdpr_field(f))
+    cleaned = []
+    for record in records:
+        flat = flatten_record(record)
+        cleaned.append({k: v for k, v in flat.items() if not is_gdpr_field(k)})
+    return cleaned, removed
+
+
+def style_sheet(ws):
+    header_font  = Font(name="Arial", bold=True, color="FFFFFF", size=11)
+    header_fill  = PatternFill("solid", start_color="2E4057")
+    header_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    cell_font    = Font(name="Arial", size=10)
+    alt_fill     = PatternFill("solid", start_color="F2F2F2")
+
+    for cell in ws[1]:
+        cell.font      = header_font
+        cell.fill      = header_fill
+        cell.alignment = header_align
+
+    for row_idx, row in enumerate(ws.iter_rows(min_row=2), start=2):
+        for cell in row:
+            cell.font      = cell_font
+            cell.alignment = Alignment(vertical="top", wrap_text=False)
+            if row_idx % 2 == 0:
+                cell.fill = alt_fill
+
+    for col_idx, col_cells in enumerate(ws.columns, start=1):
+        max_len = max((len(str(c.value)) if c.value is not None else 0) for c in col_cells)
+        ws.column_dimensions[get_column_letter(col_idx)].width = min(max_len + 4, 60)
+
+    ws.freeze_panes    = "A2"
+    ws.auto_filter.ref = ws.dimensions
+
+
+def write_sheet(wb, records: list[dict], sheet_name: str):
+    cleaned, removed = apply_gdpr_filter(records)
+    if removed:
+        print(f"  🔒 GDPR: removed fields → {', '.join(removed)}")
+    df = pd.DataFrame(cleaned)
+    ws = wb.create_sheet(title=sheet_name[:31])
+    ws.append(list(df.columns))
+    for row in df.itertuples(index=False, name=None):
+        ws.append(list(row))
+    style_sheet(ws)
+
+
+def main():
+    # Validate input folder
+    if not INPUT_FOLDER.exists():
+        print(f"Error: input folder not found:\n  {INPUT_FOLDER}", file=sys.stderr)
+        sys.exit(1)
+
+    input_paths = sorted(INPUT_FOLDER.glob("*.json"))
+    if not input_paths:
+        print(f"Error: no .json files found in:\n  {INPUT_FOLDER}", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"Found {len(input_paths)} JSON file(s) in:\n  {INPUT_FOLDER}\n")
+
+    import openpyxl
+    wb = openpyxl.Workbook()
+    wb.remove(wb.active)  # remove default empty sheet
+
+    all_data = []
+    for path in input_paths:
+        data = load_json(path)
+        all_data.extend(data)
+        print(f"  ✓ loaded {path.name}  ({len(data)} rows)")
+
+    print()
+    write_sheet(wb, all_data, "Data")
+    print(f"  → {len(all_data)} total rows written to sheet 'Data'")
+
+    OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
+    wb.save(OUTPUT_FILE)
+    print(f"\n✅ Saved: {OUTPUT_FILE}")
+
+
+if __name__ == "__main__":
+    main()
