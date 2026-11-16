@@ -91,7 +91,14 @@ const WORDS = [
   .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   .dots { display: flex; gap: 8px; flex-wrap: wrap; }
   .dot.gap { margin-left: 14px; }
-  .lang { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: .04em; color: var(--accent-press); }
+  .where { margin: -10px 0 0; font-size: 14px; font-weight: 600; color: var(--ink-soft); min-height: 1.2em; }
+  /* the word to translate sits in its own framed box, with its language on a small tab */
+  .wordbox { position: relative; width: 100%; border: 3px solid var(--line); border-radius: 18px; padding: 26px 14px 18px; background: var(--bg); }
+  .wordbox .tag {
+    position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+    font-size: 15px; font-weight: 600; letter-spacing: .04em; white-space: nowrap;
+    background: var(--card); color: var(--ink-soft); border: 2px solid var(--line); border-radius: 999px; padding: 1px 12px;
+  }
   .dot {
     width: 30px; height: 30px; border-radius: 50%;
     border: 3px solid var(--line); background: var(--card);
@@ -232,6 +239,7 @@ const WORDS = [
   <div class="bar">
     <div class="dots" id="dots" aria-label="Fortschritt"></div>
   </div>
+  <p class="where" id="where"></p>
   <div class="garden" id="plant" role="img" aria-label="Dein Kürbis" title="Dein Kürbis wächst bei jedem Wort."></div>
   <section class="card" id="card" aria-live="polite"></section>
 </main>
@@ -244,6 +252,7 @@ const WORDS = [
   const card = document.getElementById("card");
   const dotsEl = document.getElementById("dots");
   const plantEl = document.getElementById("plant");
+  const whereEl = document.getElementById("where");
 
   const missed = new Set();       // words he got wrong (only for this visit)
   const seen = new Map();         // how often each word was asked
@@ -562,12 +571,13 @@ const WORDS = [
     const part = it.dir === "en" ? 1 : 2;
     const inPart = round.slice(0, idx + 1).filter(x => x.dir === it.dir).length;
     const ofPart = round.filter(x => x.dir === it.dir).length;
-    const hello = !again && idx === 0 && roundNo === 1 ? `<p class="hello">Hallo Frederik!</p>` : "";
+    whereEl.textContent = `Teil ${part} · Wort ${inPart} von ${ofPart}`;
     card.innerHTML = `
-      ${hello}
-      <p class="label">${again ? "Noch einmal! Aus dem Kopf." : `Teil ${part} · Wort ${inPart} von ${ofPart}`}</p>
-      <p class="lang">${it.dir === "en" ? "Deutsch → Englisch" : "Englisch → Deutsch"}</p>
-      <p class="hint pop">${esc(shown(it))}</p>
+      ${again ? `<p class="label">Noch einmal! Aus dem Kopf.</p>` : ""}
+      <div class="wordbox">
+        <span class="tag">${it.dir === "en" ? "Deutsch" : "Englisch"}</span>
+        <p class="hint pop">${esc(shown(it))}</p>
+      </div>
       <button type="button" class="btn-ghost" id="say">🔊 Anhören</button>
       <form id="f" autocomplete="off">
         <input class="answer" id="answer" type="text" inputmode="text" enterkeyhint="done"
@@ -650,6 +660,7 @@ const WORDS = [
   }
 
   function partTwo() {
+    whereEl.textContent = "";
     drawDots();
     card.innerHTML = `
       <p class="msg good pop">Teil 1 geschafft! 👍</p>
@@ -662,7 +673,7 @@ const WORDS = [
   }
 
   function endRound() {
-    idx = round.length; drawDots();
+    idx = round.length; drawDots(); whereEl.textContent = "";
     const stars = results.filter(r => r === "star").length;
     const words = round.length;
     card.innerHTML = `
