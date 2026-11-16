@@ -119,15 +119,17 @@ const WORDS = [
   .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   .dots { display: flex; gap: 8px; flex-wrap: wrap; }
   .dot.gap { margin-left: 14px; }
-  .where { margin: -10px 0 0; font-size: 14px; font-weight: 600; color: var(--ink-soft); min-height: 1.2em; }
+  .where { margin: -8px 0 0; font-size: 14px; font-weight: 600; color: var(--ink-soft); min-height: 1.2em; }
   /* the word to translate sits in its own framed box, with its language on a small tab */
   .wordbox { position: relative; width: 100%; border: 3px solid var(--line); border-radius: 18px; padding: 26px 14px 18px; background: var(--bg); }
   /* ONE tab style for every box that holds a word: the language name sits on the top edge, never inside */
   .tag {
-    position: absolute; top: -14px; left: 50%; transform: translateX(-50%); z-index: 1;
+    position: absolute; top: -17px; left: 50%; transform: translateX(-50%); z-index: 1;
     font-size: 15px; font-weight: 600; letter-spacing: .04em; white-space: nowrap;
-    background: var(--card); color: var(--ink-soft); border: 2px solid var(--line); border-radius: 999px; padding: 1px 12px;
+    background: var(--card); color: var(--ink-soft); border: 2px solid var(--line); border-radius: 999px; padding: 4px 12px;
+    display: flex; align-items: center; line-height: 0;
   }
+  .tag .flag { height: 20px; width: auto; border-radius: 3px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .15); }
   .dot {
     width: 30px; height: 30px; border-radius: 50%;
     border: 3px solid var(--line); background: var(--card);
@@ -311,7 +313,7 @@ const WORDS = [
   @media (min-width: 900px) and (orientation: landscape) and (pointer: coarse) {
     main {
       max-width: 1240px; display: grid; grid-template-columns: 5fr 6fr; align-items: start;
-      grid-template-areas: "bar bar" "where where" "garden card"; column-gap: 24px; row-gap: 16px;
+      grid-template-areas: "garden card" "bar bar" "where where"; column-gap: 24px; row-gap: 16px;
     }
     .bar { grid-area: bar; }
     .where { grid-area: where; }
@@ -367,12 +369,13 @@ const WORDS = [
 </style>
 
 <main id="game">
+  <div class="garden" id="plant" role="img" aria-label="Dein Kürbis" title="Dein Kürbis wächst bei jedem Wort."></div>
+  <section class="card" id="card" aria-live="polite"></section>
+  <!-- progress at the bottom, so the garden and the word are what he sees first -->
   <div class="bar">
     <div class="dots" id="dots" aria-label="Fortschritt"></div>
   </div>
   <p class="where" id="where"></p>
-  <div class="garden" id="plant" role="img" aria-label="Dein Kürbis" title="Dein Kürbis wächst bei jedem Wort."></div>
-  <section class="card" id="card" aria-live="polite"></section>
 </main>
 
 <!-- Teacher page: open the game address with #lehrer at the end. Frederik never sees it. -->
@@ -512,6 +515,15 @@ const WORDS = [
   // Language labels come from the same rule as the box contents, so they can never be mixed up:
   // dir "en" = German word shown, English typed; dir "de" = English word shown, German typed.
   const LANG_NAME = { de: "Deutsch", en: "Englisch" };
+  // Flags for the language tabs (drawn, because flag emojis do not show on Windows)
+  const FLAG = {
+    en: `<svg class="flag" viewBox="0 0 60 30" aria-hidden="true"><clipPath id="ujc"><path d="M30,15h30v15zv15h-30zh-30v-15zv-15h30z"/></clipPath>
+      <rect width="60" height="30" fill="#012169"/><path d="M0,0L60,30M60,0L0,30" stroke="#fff" stroke-width="6"/>
+      <path d="M0,0L60,30M60,0L0,30" clip-path="url(#ujc)" stroke="#C8102E" stroke-width="4"/>
+      <path d="M30,0v30M0,15h60" stroke="#fff" stroke-width="10"/><path d="M30,0v30M0,15h60" stroke="#C8102E" stroke-width="6"/></svg>`,
+    de: `<svg class="flag" viewBox="0 0 5 3" aria-hidden="true"><rect width="5" height="1" fill="#000"/><rect y="1" width="5" height="1" fill="#DD0000"/><rect y="2" width="5" height="1" fill="#FFCE00"/></svg>`,
+  };
+  const tab = lang => `<span class="tag" role="img" aria-label="${LANG_NAME[lang]}" data-lang="${lang}">${FLAG[lang]}</span>`;
   const shownLang = it => it.dir === "en" ? "de" : "en";        // language of the word in the word box
   const typedLang = it => it.dir;                               // language he types in the answer box
   const PLACEHOLDER = { de: "Tippe …", en: "Tippe …" };          // always German, so Frederik understands it
@@ -757,13 +769,13 @@ const WORDS = [
     card.innerHTML = `
       ${again ? `<p class="label">Noch einmal! Aus dem Kopf.</p>` : ""}
       <div class="wordbox">
-        <span class="tag" lang="de">${LANG_NAME[shownLang(it)]}</span>
+        ${tab(shownLang(it))}
         <p class="hint pop" lang="${shownLang(it)}">${esc(shown(it))}</p>
       </div>
       <button type="button" class="btn-ghost say" id="say" aria-label="Anhören" title="Anhören">🔊</button>
       <form id="f" autocomplete="off">
         <div class="answerwrap">
-          <span class="tag" lang="de">${LANG_NAME[typedLang(it)]}</span>
+          ${tab(typedLang(it))}
           <input class="answer" id="answer" type="text" inputmode="text" enterkeyhint="done"
             autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
             lang="${typedLang(it)}" aria-label="${typedLang(it) === "en" ? "Englisches Wort" : "Deutsches Wort"}" placeholder="${PLACEHOLDER[typedLang(it)]}">
@@ -815,9 +827,9 @@ const WORDS = [
     const solution = it.dir === "en" ? enMain(w) : w.de;
     const pair = `
       <div class="pair">
-        <div class="side from"><span class="tag" lang="de">${LANG_NAME[shownLang(it)]}</span><span class="fromword" lang="${shownLang(it)}">${esc(shown(it))}</span></div>
+        <div class="side from">${tab(shownLang(it))}<span class="fromword" lang="${shownLang(it)}">${esc(shown(it))}</span></div>
         <div class="arrow" aria-hidden="true">↓</div>
-        <div class="side to"><span class="tag" lang="de">${LANG_NAME[typedLang(it)]}</span><span class="word" lang="${typedLang(it)}">${esc(solution)}</span></div>
+        <div class="side to">${tab(typedLang(it))}<span class="word" lang="${typedLang(it)}">${esc(solution)}</span></div>
       </div>`;
     if (firstTry) {
       results[idx] = "star"; stage++; thirst = Math.max(0, thirst - 1); drawPlant(true);
