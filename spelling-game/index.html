@@ -122,8 +122,9 @@ const WORDS = [
   .where { margin: -10px 0 0; font-size: 14px; font-weight: 600; color: var(--ink-soft); min-height: 1.2em; }
   /* the word to translate sits in its own framed box, with its language on a small tab */
   .wordbox { position: relative; width: 100%; border: 3px solid var(--line); border-radius: 18px; padding: 26px 14px 18px; background: var(--bg); }
-  .wordbox .tag {
-    position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+  /* ONE tab style for every box that holds a word: the language name sits on the top edge, never inside */
+  .tag {
+    position: absolute; top: -14px; left: 50%; transform: translateX(-50%); z-index: 1;
     font-size: 15px; font-weight: 600; letter-spacing: .04em; white-space: nowrap;
     background: var(--card); color: var(--ink-soft); border: 2px solid var(--line); border-radius: 999px; padding: 1px 12px;
   }
@@ -231,14 +232,13 @@ const WORDS = [
   @keyframes badge { from { transform: rotate(-3deg) scale(.3); opacity: 0; } to { transform: rotate(-3deg) scale(1); opacity: 1; } }
   @media (prefers-reduced-motion: reduce) { .badge { animation: none; } }
   /* word pair on the success screen: the shown word, then the answer */
-  .pair { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 6px; }
-  .pair .side { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 12px; border-radius: 16px; }
+  .pair { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 8px; }
+  .pair .side { position: relative; width: 100%; display: flex; flex-direction: column; align-items: center; padding: 22px 12px 12px; border-radius: 18px; border: 3px solid var(--line); }
   .pair .from { background: var(--bg); }
-  .pair .to { background: var(--good-soft); }
-  .pair .ptag { font-size: 15px; font-weight: 600; letter-spacing: .04em; color: var(--ink-soft); }
+  .pair .to { background: var(--good-soft); border-color: var(--good); }
   .pair .fromword { font-size: clamp(26px, 7vw, 38px); font-weight: 600; }
   .pair .fromword, .pair .word { display: block; width: 100%; text-align: center; text-wrap: balance; }
-  .pair .arrow { font-size: 26px; line-height: 1; color: var(--ink-soft); }
+  .pair .arrow { font-size: 26px; line-height: 1; color: var(--ink-soft); margin-bottom: 12px; }
   /* spelling tip: a yellow note with a dashed edge, so it never looks like one of the word boxes */
   .why {
     margin: 0; width: 100%; font-size: 22px; line-height: 1.4; font-weight: 400;
@@ -332,11 +332,6 @@ const WORDS = [
   .btn-ghost.say { font-size: 30px; line-height: 1; min-width: 88px; padding: 8px 20px; }
   /* answer box gets the same language tab as the word box */
   .answerwrap { position: relative; width: 100%; margin-top: 6px; }
-  .answerwrap .tag {
-    position: absolute; top: -14px; left: 50%; transform: translateX(-50%); z-index: 1;
-    font-size: 15px; font-weight: 600; letter-spacing: .04em; white-space: nowrap;
-    background: var(--card); color: var(--ink-soft); border: 2px solid var(--line); border-radius: 999px; padding: 1px 12px;
-  }
   .answerwrap .answer { padding-top: 20px; }
   /* ---------- teacher page: plain and easy ---------- */
   .teacher { max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; font-size: 18px; }
@@ -820,9 +815,9 @@ const WORDS = [
     const solution = it.dir === "en" ? enMain(w) : w.de;
     const pair = `
       <div class="pair">
-        <div class="side from"><span class="ptag">${LANG_NAME[shownLang(it)]}</span><span class="fromword" lang="${shownLang(it)}">${esc(shown(it))}</span></div>
+        <div class="side from"><span class="tag" lang="de">${LANG_NAME[shownLang(it)]}</span><span class="fromword" lang="${shownLang(it)}">${esc(shown(it))}</span></div>
         <div class="arrow" aria-hidden="true">↓</div>
-        <div class="side to"><span class="ptag">${LANG_NAME[typedLang(it)]}</span><span class="word" lang="${typedLang(it)}">${esc(solution)}</span></div>
+        <div class="side to"><span class="tag" lang="de">${LANG_NAME[typedLang(it)]}</span><span class="word" lang="${typedLang(it)}">${esc(solution)}</span></div>
       </div>`;
     if (firstTry) {
       results[idx] = "star"; stage++; thirst = Math.max(0, thirst - 1); drawPlant(true);
