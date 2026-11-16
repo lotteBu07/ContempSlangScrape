@@ -9,25 +9,26 @@
 /* =====================================================================
    WÖRTERLISTE – HIER BEARBEITEN
    ---------------------------------------------------------------------
-   Jede Zeile ist ein Wort. Drei Teile:
-     de:  der deutsche Hinweis (das sieht Frederik)
-     en:  das englische Wort (das muss er schreiben)
-     why: ein kurzer deutscher Satz, warum man es so schreibt
+   Jede Zeile ist ein Wort. Vier Teile:
+     de:    das deutsche Wort. Gibt es zwei richtige Wörter, mit Komma trennen ("das, dies").
+     en:    das englische Wort
+     why:   kurzer Satz zum ENGLISCHEN Wort (Teil 1: Deutsch → Englisch)
+     whyDe: kurzer Satz zum DEUTSCHEN Wort (Teil 2: Englisch → Deutsch)
    Neues Wort: eine Zeile kopieren, Text ändern, Komma am Ende nicht vergessen.
    ===================================================================== */
 const WORDS = [
-  { de: "gelb",                          en: "yellow",             why: "Yellow hat zwei l und endet mit ow." },
-  { de: "null",                          en: "zero",               why: "Zero fängt mit z an, aber man spricht es wie s." },
-  { de: "vier",                          en: "four",               why: "Four hat ein u, wie bei your." },
-  { de: "acht",                          en: "eight",              why: "Eight hat das gh, wie night." },
-  { de: "Englisch",                      en: "English",            why: "Am Ende steht sh, nicht sch. Und vorne ein großes E." },
-  { de: "Tschüss",                       en: "See you later",      why: "See hat zwei e. Later hat nur ein t." },
-  { de: "Danke",                         en: "Thank you",          why: "Thank fängt mit th an und endet mit nk." },
-  { de: "das, dies",                     en: "this",               why: "This fängt mit th an, wie the." },
-  { de: "sagen, sprechen",               en: "speak",              why: "Speak hat ea. Man spricht es wie ii." },
-  { de: "Waschbär",                      en: "raccoon",            why: "Raccoon hat zwei c und zwei o." },
-  { de: "Kannst du das buchstabieren?",  en: "Can you spell this?", why: "Spell hat am Ende zwei l." },
-  { de: "Woher kommst du?",              en: "Where are you from?", why: "Where hat ein h nach dem w, wie what." },
+  { de: "gelb",                         en: "yellow",              why: "Yellow hat zwei l und endet mit ow.",                  whyDe: "Gelb endet mit b, nicht mit p." },
+  { de: "null",                         en: "zero",                why: "Zero fängt mit z an, aber man spricht es wie s.",      whyDe: "Null hat am Ende zwei l." },
+  { de: "vier",                         en: "four",                why: "Four hat ein u, wie bei your.",                        whyDe: "Vier fängt mit v an und hat ie." },
+  { de: "acht",                         en: "eight",               why: "Eight hat das gh, wie night.",                         whyDe: "Acht hat ch, wie lachen." },
+  { de: "Englisch",                     en: "English",             why: "Am Ende steht sh, nicht sch. Und vorne ein großes E.", whyDe: "Englisch endet mit sch. Auf Englisch ist es nur sh." },
+  { de: "Tschüss",                      en: "See you later",       why: "See hat zwei e. Later hat nur ein t.",                 whyDe: "Tschüss fängt mit tsch an und endet mit ss." },
+  { de: "Danke",                        en: "Thank you",           why: "Thank fängt mit th an und endet mit nk.",              whyDe: "Danke hat nk, wie trinken." },
+  { de: "das, dies",                    en: "this",                why: "This fängt mit th an, wie the.",                       whyDe: "Dies hat ie, wie vier. Das hat nur ein s." },
+  { de: "sagen, sprechen",              en: "speak",               why: "Speak hat ea. Man spricht es wie ii.",                 whyDe: "Sprechen hat ch, wie lachen. Sagen hat ein g." },
+  { de: "Waschbär",                     en: "raccoon",             why: "Raccoon hat zwei c und zwei o.",                       whyDe: "Waschbär hat sch und ä, wie Bär." },
+  { de: "Kannst du das buchstabieren?", en: "Can you spell this?", why: "Spell hat am Ende zwei l.",                            whyDe: "Buchstabieren hat ie, wie vier. Kannst hat zwei n." },
+  { de: "Woher kommst du?",             en: "Where are you from?", why: "Where hat ein h nach dem w, wie what.",                whyDe: "Kommst hat zwei m. Woher hat ein h." },
 ];
 /* ===================== Ende der Wörterliste ===================== */
 </script>
@@ -87,7 +88,9 @@ const WORDS = [
 
   /* Top bar: round progress + streak */
   .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-  .dots { display: flex; gap: 10px; }
+  .dots { display: flex; gap: 8px; flex-wrap: wrap; }
+  .dot.gap { margin-left: 14px; }
+  .lang { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: .04em; color: var(--accent-press); }
   .dot {
     width: 30px; height: 30px; border-radius: 50%;
     border: 3px solid var(--line); background: var(--card);
@@ -184,7 +187,7 @@ const WORDS = [
   .hidden-word { font-family: var(--font-word); font-size: 44px; letter-spacing: .3em; color: var(--ink-soft); }
 
   /* End of round */
-  .stars { font-size: clamp(40px, 12vw, 64px); letter-spacing: 6px; line-height: 1; }
+  .stars { font-size: clamp(30px, 8vw, 52px); letter-spacing: 4px; line-height: 1.2; overflow-wrap: anywhere; }
   .score { margin: 0; font-size: 26px; font-weight: 600; }
   .pop { animation: pop .35s ease-out; }
   @keyframes pop { from { transform: scale(.85); opacity: .4; } to { transform: scale(1); opacity: 1; } }
@@ -202,7 +205,9 @@ const WORDS = [
   }
   @media (max-width: 420px) {
     .card { padding: 22px 14px; }
-    .dot { width: 26px; height: 26px; font-size: 14px; }
+    .dot { width: 24px; height: 24px; font-size: 13px; border-width: 2px; }
+    .dots { gap: 5px; }
+    .dot.gap { margin-left: 10px; }
     .btn { width: 100%; }
   }
 </style>
@@ -291,12 +296,21 @@ const WORDS = [
     browserSpeak(text, btn);
   }
 
-  // Build a round: an easy new word first, then old mistakes mixed into places 2–5.
-  function buildRound() {
-    const byLeastSeen = list => shuffle(list).sort((a, b) => (seen.get(a.en) || 0) - (seen.get(b.en) || 0));
-    const missedWords = WORDS.filter(w => missed.has(w.en));
+  // dir "en": German shown, he types English (Teil 1)
+  // dir "de": English shown, he types German (Teil 2)
+  const key = (w, dir) => dir + ":" + w.en;
+  const answers = it => it.dir === "en" ? [it.w.en] : it.w.de.split(",").map(x => x.trim()).filter(Boolean);
+  const shown = it => it.dir === "en" ? it.w.de : it.w.en;
+  // no capitals needed; ä/ö/ü/ß may also be typed as ae/oe/ue/ss
+  const norm = s => clean(s).replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss");
+
+  // Build one part: an easy new word first, then old mistakes mixed into places 2–5.
+  function buildPart(dir) {
+    const seenN = w => seen.get(key(w, dir)) || 0;
+    const byLeastSeen = list => shuffle(list).sort((a, b) => seenN(a) - seenN(b));
+    const missedWords = WORDS.filter(w => missed.has(key(w, dir)));
     const review = shuffle(missedWords).slice(0, Math.min(3, ROUND_SIZE - 1));
-    let fresh = byLeastSeen(WORDS.filter(w => !missed.has(w.en)));
+    let fresh = byLeastSeen(WORDS.filter(w => !missed.has(key(w, dir))));
     if (fresh.length === 0) fresh = review.splice(0, 1);          // everything was missed: start anyway
     const need = ROUND_SIZE - review.length;
     const newOnes = fresh.slice(0, need);
@@ -305,7 +319,18 @@ const WORDS = [
       if (!extra) break; newOnes.push(extra);
     }
     const first = newOnes.shift();
-    return [first].concat(shuffle(newOnes.concat(review))).filter(Boolean);
+    return [first].concat(shuffle(newOnes.concat(review))).filter(Boolean).map(w => ({ w, dir }));
+  }
+
+  function lcsLen(a, b) {
+    a = a.toLowerCase(); b = b.toLowerCase();
+    let prev = new Array(b.length + 1).fill(0);
+    for (let i = 1; i <= a.length; i++) {
+      const cur = [0];
+      for (let j = 1; j <= b.length; j++) cur[j] = a[i - 1] === b[j - 1] ? prev[j - 1] + 1 : Math.max(prev[j], cur[j - 1]);
+      prev = cur;
+    }
+    return prev[b.length];
   }
 
   // Which letters of the right word did he miss? (longest common subsequence)
@@ -327,11 +352,12 @@ const WORDS = [
   }
 
   function drawDots() {
-    dotsEl.innerHTML = round.map((w, k) => {
+    dotsEl.innerHTML = round.map((it, k) => {
       const r = results[k];
       const cls = r === "star" ? "star" : r === "done" ? "done" : k === idx ? "now" : "";
       const sym = r === "star" ? "⭐" : r === "done" ? "✓" : "";
-      return `<span class="dot ${cls}">${sym}</span>`;
+      const gap = k > 0 && round[k - 1].dir !== it.dir ? " gap" : "";
+      return `<span class="dot ${cls}${gap}">${sym}</span>`;
     }).join("");
     streakEl.textContent = "🔥 " + streak;
   }
@@ -354,29 +380,34 @@ const WORDS = [
   // ---------- screens ----------
   function startRound() {
     roundNo++;
-    round = buildRound(); idx = 0; results = [];
+    round = buildPart("en").concat(buildPart("de")); idx = 0; results = [];
     askWord();
   }
 
   function askWord(again) {
     clearTimeout(hideTimer);
-    const w = round[idx];
-    if (!again) { firstTry = true; seen.set(w.en, (seen.get(w.en) || 0) + 1); }
+    const it = round[idx], w = it.w;
+    if (!again) { firstTry = true; seen.set(key(w, it.dir), (seen.get(key(w, it.dir)) || 0) + 1); }
     drawDots();
+    const part = it.dir === "en" ? 1 : 2;
+    const inPart = round.slice(0, idx + 1).filter(x => x.dir === it.dir).length;
+    const ofPart = round.filter(x => x.dir === it.dir).length;
+    const hello = !again && idx === 0 && roundNo === 1 ? `<p class="hello">Hallo Frederik! Schreib das Wort auf Englisch.</p>` : "";
     card.innerHTML = `
-      ${!again && idx === 0 && roundNo === 1 ? `<p class="hello">Hallo Frederik! Schreib das Wort auf Englisch.</p>` : ""}
-      <p class="label">${again ? "Nochmal! Schreib es aus dem Kopf." : `Wort ${idx + 1} von ${round.length}`}</p>
-      <p class="hint pop">${esc(w.de)}</p>
+      ${hello}
+      <p class="label">${again ? "Nochmal! Schreib es aus dem Kopf." : `Teil ${part} · Wort ${inPart} von ${ofPart}`}</p>
+      <p class="lang">${it.dir === "en" ? "Deutsch → Englisch" : "Englisch → Deutsch"}</p>
+      <p class="hint pop">${esc(shown(it))}</p>
       <button type="button" class="btn-ghost" id="say">🔊 Anhören</button>
       <form id="f" autocomplete="off">
         <input class="answer" id="answer" type="text" inputmode="text" enterkeyhint="done"
           autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-          aria-label="Englisches Wort" placeholder="Hier schreiben">
+          aria-label="${it.dir === "en" ? "Englisches Wort" : "Deutsches Wort"}" placeholder="${it.dir === "en" ? "Auf Englisch" : "Auf Deutsch"}">
         <button class="btn" type="submit">Fertig ✓</button>
       </form>`;
     const input = document.getElementById("answer");
     const sayBtn = document.getElementById("say");
-    sayBtn.onclick = () => speak(w.en, sayBtn);
+    sayBtn.onclick = () => speak(w.en, sayBtn);       // always reads the English word
     document.getElementById("f").onsubmit = e => {
       e.preventDefault();
       const typed = input.value.trim();
@@ -387,21 +418,24 @@ const WORDS = [
   }
 
   function check(typed) {
-    const w = round[idx];
-    if (clean(typed) === clean(w.en)) return gotIt();
-    if (firstTry) { missed.add(w.en); streak = 0; drawDots(); }
+    const it = round[idx];
+    if (answers(it).some(a => norm(a) === norm(typed))) return gotIt();
+    if (firstTry) { missed.add(key(it.w, it.dir)); streak = 0; drawDots(); }
     firstTry = false;
     showCompare(typed);
   }
 
   function showCompare(typed) {
-    const w = round[idx];
-    const d = diff(typed.replace(/\s+/g, " "), w.en);
+    const it = round[idx];
+    typed = typed.replace(/\s+/g, " ");
+    // with two right answers ("das, dies"), compare with the closer one
+    const target = answers(it).reduce((best, a) => lcsLen(typed, a) > lcsLen(typed, best) ? a : best);
+    const d = diff(typed, target);
     card.innerHTML = `
       <p class="msg try pop">Fast!</p>
       <div class="compare">
         <div class="row you"><span class="who">Du hast geschrieben:</span><span class="word">${d.you}</span></div>
-        <div class="row right" id="rightRow"><span class="who">So schreibt man es:</span><span class="word" id="rightWord">${d.right}</span></div>
+        <div class="row right"><span class="who">So schreibt man es:</span><span class="word">${d.right}</span></div>
       </div>
       <p class="label">Schau genau hin! Merk dir das Wort.</p>
       <div class="timer" id="timer"><i></i></div>`;
@@ -410,14 +444,15 @@ const WORDS = [
   }
 
   function gotIt() {
-    const w = round[idx];
+    const it = round[idx], w = it.w;
+    const solution = it.dir === "en" ? w.en : w.de;
     if (firstTry) {
       results[idx] = "star"; streak++;
-      missed.delete(w.en);
+      missed.delete(key(w, it.dir));
       drawDots();
       card.innerHTML = `
         <p class="msg good pop">${pick(["Super!", "Richtig!", "Klasse!", "Toll!"])} ⭐</p>
-        <p class="word">${esc(w.en)}</p>
+        <p class="word">${esc(solution)}</p>
         <button class="btn green" type="button" id="next">Weiter →</button>`;
       confetti(8);
     } else {
@@ -425,8 +460,8 @@ const WORDS = [
       drawDots();
       card.innerHTML = `
         <p class="msg good pop">Jetzt stimmt's! 🎉</p>
-        <p class="word">${esc(w.en)}</p>
-        <p class="why">${esc(w.why)}</p>
+        <p class="word">${esc(solution)}</p>
+        <p class="why">${esc(it.dir === "en" ? w.why : w.whyDe)}</p>
         <button class="btn green" type="button" id="next">Weiter →</button>`;
     }
     const next = document.getElementById("next");
@@ -438,7 +473,22 @@ const WORDS = [
 
   function nextWord() {
     idx++;
-    if (idx < round.length) askWord(); else endRound();
+    if (idx >= round.length) return endRound();
+    if (round[idx].dir !== round[idx - 1].dir) return partTwo();
+    askWord();
+  }
+
+  function partTwo() {
+    drawDots();
+    card.innerHTML = `
+      <p class="msg good pop">Teil 1 geschafft! 👍</p>
+      <p class="label">Jetzt andersrum:</p>
+      <p class="hint">Englisch → Deutsch</p>
+      <p class="hello">Du siehst das englische Wort. Schreib es auf Deutsch.</p>
+      <button class="btn" type="button" id="go">Los geht's ▶</button>`;
+    const go = document.getElementById("go");
+    go.onclick = () => askWord();
+    go.focus({ preventScroll: true });
   }
 
   function endRound() {
