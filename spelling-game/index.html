@@ -14,6 +14,9 @@
      en:    das englische Wort
      why:   kurzer Satz zum ENGLISCHEN Wort (Teil 1: Deutsch → Englisch)
      whyDe: kurzer Satz zum DEUTSCHEN Wort (Teil 2: Englisch → Deutsch)
+   en: Gibt es zwei richtige englische Antworten, mit | trennen ("he's|he is").
+       Im Spiel angezeigt wird die erste.
+   Bei deutschen Nomen darf Frederik den Artikel (der, die, das) weglassen.
    In why und whyDe: Wörter und Buchstaben zwischen *Sternchen* stehen im Spiel
    fett in einem kleinen Kasten. Beispiel: "*Thank* fängt mit *th* an."
    Neues Wort: eine Zeile kopieren, Text ändern, Komma am Ende nicht vergessen.
@@ -31,6 +34,25 @@ const WORDS = [
   { de: "Waschbär",                     en: "raccoon",             why: "*Raccoon* hat zwei *c* und zwei *o*.",                   whyDe: "*Waschbär* hat *sch* und *ä*, wie *Bär*." },
   { de: "Kannst du das buchstabieren?", en: "Can you spell this?", why: "*Spell* hat am Ende zwei *l*.",                          whyDe: "*Buchstabieren* hat *ie*, wie *vier*. *Kannst* hat zwei *n*." },
   { de: "Woher kommst du?",             en: "Where are you from?", why: "*Where* hat ein *h* nach dem *w*, wie *what*.",          whyDe: "*Kommst* hat zwei *m*. *Woher* hat ein *h*." },
+
+  /* English Short Test 1, Unit 1 School Life */
+  { de: "die Musik",                    en: "music",               why: "*Music* endet mit *c*, nicht mit *k*.",                  whyDe: "*Musik* endet mit *k*. Auf Englisch ist es ein *c*." },
+  { de: "die Uniform",                  en: "uniform",             why: "*Uniform* schreibt man wie auf Deutsch.",                whyDe: "*Uniform* schreibt man wie auf Englisch, mit *u* am Anfang." },
+  { de: "die Jahrgangsstufe",           en: "year",                why: "*Year* hat *ea* in der Mitte, wie *hear*.",              whyDe: "*Jahrgangsstufe* hat ein *h* nach dem *a*, wie *Jahr*." },
+  { de: "die Naturwissenschaft",        en: "science",             why: "*Science* fängt mit *sc* an. Man hört nur *s*.",         whyDe: "*Wissenschaft* hat zwei *s*, wie *wissen*." },
+  { de: "der Hausmeister",              en: "caretaker",           why: "*Caretaker* ist *care* und *taker* zusammen.",           whyDe: "*Hausmeister* ist *Haus* und *Meister*. *Meister* hat *ei*." },
+  { de: "das Leben",                    en: "life",                why: "*Life* endet mit einem *e*, das man nicht hört.",        whyDe: "*Leben* hat ein *b*, nicht *p*." },
+  { de: "die Leben",                    en: "lives",               why: "Mehrzahl: aus *f* wird *v*. *Life* wird *lives*.",       whyDe: "Die Mehrzahl von *das Leben* ist *die Leben*." },
+  { de: "immer",                        en: "always",              why: "*Always* hat nur ein *l* und endet mit *s*.",            whyDe: "*Immer* hat zwei *m*." },
+  { de: "beschäftigt, belebt",          en: "busy",                why: "*Busy* schreibt man mit *u*, aber man spricht es wie *i*.", whyDe: "*Beschäftigt* hat *ä* und endet mit *gt*." },
+  { de: "neu",                          en: "new",                 why: "*New* endet mit *w*, nicht mit *u*.",                    whyDe: "*Neu* hat *eu*, wie *heute*." },
+  { de: "er ist",                       en: "he's|he is",          why: "*He's* ist kurz für *he is*. Das *'* steht für das *i*.", whyDe: "*He's* heißt *er ist*." },
+  { de: "sie ist",                      en: "she's|she is",        why: "*She's* ist kurz für *she is*. Das *'* steht für das *i*.", whyDe: "*She's* heißt *sie ist*." },
+  { de: "es ist",                       en: "it's|it is",          why: "*It's* ist kurz für *it is*. Nicht *this*!",             whyDe: "*It's* heißt *es ist*." },
+  { de: "Ich gehe auf die Hornbergschule.", en: "I go to Hornberg School.", why: "*auf die Schule gehen* heißt *go to school*. *School* hat *ch* und zwei *o*.", whyDe: "*Hornbergschule* schreibt man zusammen. *Schule* hat *sch*." },
+  { de: "Frau Pfisterer ist meine Klassenlehrerin.", en: "Mrs Pfisterer is my form tutor.", why: "*Klassenlehrerin* heißt *form tutor*. *Tutor* endet mit *or*.", whyDe: "*Klassenlehrerin* hat zwei *s* und *eh*." },
+  { de: "Frau Frey ist eine Englischlehrerin.", en: "Mrs Frey is an English teacher.", why: "Vor *E* steht *an*, nicht *a*. *Teacher* hat *ea*.",     whyDe: "*Englischlehrerin* schreibt man zusammen." },
+  { de: "Meine Freunde sind cool.",     en: "My friends are cool.", why: "*Friends* hat *ie*. *sind* heißt hier *are*.",          whyDe: "*Freunde* hat *eu*. *cool* bleibt gleich." },
 ];
 /* ===================== Ende der Wörterliste ===================== */
 </script>
@@ -400,8 +422,9 @@ const WORDS = [
   // dir "en": German shown, he types English (Teil 1)
   // dir "de": English shown, he types German (Teil 2)
   const key = (w, dir) => dir + ":" + w.en;
-  const answers = it => it.dir === "en" ? [it.w.en] : it.w.de.split(",").map(x => x.trim()).filter(Boolean);
-  const shown = it => it.dir === "en" ? it.w.de : it.w.en;
+  const enMain = w => w.en.split("|")[0].trim();                 // the English answer shown on screen
+  const answers = it => (it.dir === "en" ? it.w.en.split("|") : it.w.de.split(",")).map(x => x.trim()).filter(Boolean);
+  const shown = it => it.dir === "en" ? it.w.de : enMain(it.w);
   // no capitals needed; ä/ö/ü/ß may also be typed as ae/oe/ue/ss
   const norm = s => clean(s).replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss");
 
@@ -653,7 +676,7 @@ const WORDS = [
     const input = document.getElementById("answer");
     const sayBtn = document.getElementById("say");
     // reads the word he has to write: English in part 1, German (German voice) in part 2
-    sayBtn.onclick = () => it.dir === "en" ? speak(w.en, sayBtn, "en") : speak(w.de, sayBtn, "de");
+    sayBtn.onclick = () => it.dir === "en" ? speak(enMain(w), sayBtn, "en") : speak(w.de, sayBtn, "de");
     document.getElementById("f").onsubmit = e => {
       e.preventDefault();
       const typed = input.value.trim();
@@ -665,7 +688,8 @@ const WORDS = [
 
   function check(typed) {
     const it = round[idx];
-    if (answers(it).some(a => norm(a) === norm(typed))) return gotIt();
+    const noArticle = x => it.dir === "de" ? x.replace(/^(der|die|das) /, "") : x;   // "Musik" counts like "die Musik"
+    if (answers(it).some(a => noArticle(norm(a)) === noArticle(norm(typed)))) return gotIt();
     if (firstTry) { missed.add(key(it.w, it.dir)); thirst = Math.min(6, thirst + 1); drawPlant(); }
     firstTry = false;
     showCompare(typed);
@@ -691,7 +715,7 @@ const WORDS = [
 
   function gotIt() {
     const it = round[idx], w = it.w;
-    const solution = it.dir === "en" ? w.en : w.de;
+    const solution = it.dir === "en" ? enMain(w) : w.de;
     const pair = `
       <div class="pair">
         <div class="side from"><span class="ptag">${it.dir === "en" ? "Deutsch" : "Englisch"}</span><span class="fromword">${esc(shown(it))}</span></div>
