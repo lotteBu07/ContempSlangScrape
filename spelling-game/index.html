@@ -52,6 +52,7 @@ const WORDS = [
     --mark-ink: #13213d;
     --line: #c9d8ee;
     --sky-top: #cfe8ff;
+    --badge-ink: #ffffff;
     --font-display: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
     --font-word: "Atkinson Hyperlegible", Verdana, system-ui, sans-serif;
     --radius: 22px;
@@ -61,14 +62,14 @@ const WORDS = [
       --bg: #0e1a33; --bg-dot: #16264a; --card: #1a2b50; --ink: #f2f6ff; --ink-soft: #b3c2e0;
       --accent: #ff8a3d; --accent-ink: #1a0d00; --accent-press: #ffa266;
       --good: #3ddc84; --good-soft: #143b2a; --try: #a98bff; --try-soft: #2c2557;
-      --mark: #ffe14d; --mark-ink: #13213d; --line: #2e4372; --sky-top: #24386a; color-scheme: dark;
+      --mark: #ffe14d; --mark-ink: #13213d; --line: #2e4372; --sky-top: #24386a; --badge-ink: #062b16; color-scheme: dark;
     }
   }
   :root[data-theme="dark"] {
     --bg: #0e1a33; --bg-dot: #16264a; --card: #1a2b50; --ink: #f2f6ff; --ink-soft: #b3c2e0;
     --accent: #ff8a3d; --accent-ink: #1a0d00; --accent-press: #ffa266;
     --good: #3ddc84; --good-soft: #143b2a; --try: #a98bff; --try-soft: #2c2557;
-    --mark: #ffe14d; --mark-ink: #13213d; --line: #2e4372; --sky-top: #24386a; color-scheme: dark;
+    --mark: #ffe14d; --mark-ink: #13213d; --line: #2e4372; --sky-top: #24386a; --badge-ink: #062b16; color-scheme: dark;
   }
 
   *, *::before, *::after { box-sizing: border-box; }
@@ -156,7 +157,7 @@ const WORDS = [
   }
   .btn:hover { filter: brightness(1.08); transform: translateY(-2px); box-shadow: 0 8px 0 var(--accent-press); }
   .btn:active { transform: translateY(5px); box-shadow: 0 1px 0 var(--accent-press); }
-  .btn.green { background: var(--good); box-shadow: 0 6px 0 color-mix(in srgb, var(--good) 70%, #000); color: #fff; }
+  .btn.green { background: var(--good); box-shadow: 0 6px 0 color-mix(in srgb, var(--good) 70%, #000); color: var(--badge-ink); }
   .btn.green:active { box-shadow: 0 1px 0 color-mix(in srgb, var(--good) 70%, #000); }
   .btn-ghost {
     min-height: 56px; padding: 8px 22px; border-radius: 999px;
@@ -186,6 +187,25 @@ const WORDS = [
   .msg { margin: 0; font-size: clamp(34px, 9vw, 52px); font-weight: 700; line-height: 1.1; }
   .msg.good { color: var(--good); }
   .msg.try { color: var(--try); }
+  /* praise sticker: stands apart from the words, pops in */
+  .badge {
+    display: inline-block; margin: 0; padding: 10px 30px; border-radius: 999px;
+    font-size: clamp(30px, 8vw, 44px); font-weight: 700; line-height: 1.1;
+    background: var(--good); color: var(--badge-ink);
+    box-shadow: 0 6px 0 color-mix(in srgb, var(--good) 65%, #000);
+    transform: rotate(-3deg);
+    animation: badge .5s cubic-bezier(.2, 1.6, .4, 1) both;
+  }
+  @keyframes badge { from { transform: rotate(-3deg) scale(.3); opacity: 0; } to { transform: rotate(-3deg) scale(1); opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .badge { animation: none; } }
+  /* word pair on the success screen: the shown word, then the answer */
+  .pair { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .pair .side { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 12px; border-radius: 16px; }
+  .pair .from { background: var(--bg); }
+  .pair .to { background: var(--good-soft); }
+  .pair .ptag { font-size: 15px; font-weight: 600; letter-spacing: .04em; color: var(--ink-soft); }
+  .pair .fromword { font-size: clamp(26px, 7vw, 38px); font-weight: 600; overflow-wrap: anywhere; }
+  .pair .arrow { font-size: 26px; line-height: 1; color: var(--ink-soft); }
   .why {
     margin: 0; font-size: 24px; line-height: 1.4; font-weight: 500;
     background: var(--good-soft); color: var(--ink); border-radius: 16px; padding: 14px 18px;
@@ -618,7 +638,7 @@ const WORDS = [
         <div class="row you"><span class="who">Deins:</span><span class="word">${d.you}</span></div>
         <div class="row right"><span class="who">Richtig:</span><span class="word">${d.right}</span></div>
       </div>
-      <p class="label">Merke dir das Wort!</p>
+      <p class="label">Lies und merke!</p>
       <div class="timer" id="timer"><i></i></div>`;
     requestAnimationFrame(() => document.getElementById("timer").classList.add("run"));
     hideTimer = setTimeout(() => askWord(true), SHOW_MS);
@@ -627,21 +647,27 @@ const WORDS = [
   function gotIt() {
     const it = round[idx], w = it.w;
     const solution = it.dir === "en" ? w.en : w.de;
+    const pair = `
+      <div class="pair">
+        <div class="side from"><span class="ptag">${it.dir === "en" ? "Deutsch" : "Englisch"}</span><span class="fromword">${esc(shown(it))}</span></div>
+        <div class="arrow" aria-hidden="true">↓</div>
+        <div class="side to"><span class="ptag">${it.dir === "en" ? "Englisch" : "Deutsch"}</span><span class="word">${esc(solution)}</span></div>
+      </div>`;
     if (firstTry) {
       results[idx] = "star"; growth++; thirst = Math.max(0, thirst - 1); drawPlant(true);
       missed.delete(key(w, it.dir));
       drawDots();
       card.innerHTML = `
-        <p class="msg good pop">${pick(["Super!", "Richtig!", "Klasse!", "Toll!"])} ⭐</p>
-        <p class="word">${esc(solution)}</p>
+        <p class="badge">${pick(["Super!", "Richtig!", "Klasse!", "Toll!"])} ⭐</p>
+        ${pair}
         <button class="btn green" type="button" id="next">Weiter →</button>`;
       confetti(8);
     } else {
       results[idx] = "done"; growth++; drawPlant(true);
       drawDots();
       card.innerHTML = `
-        <p class="msg good pop">Jetzt richtig! 🎉</p>
-        <p class="word">${esc(solution)}</p>
+        <p class="badge">Jetzt richtig! 🎉</p>
+        ${pair}
         <p class="why">${esc(it.dir === "en" ? w.why : w.whyDe)}</p>
         <button class="btn green" type="button" id="next">Weiter →</button>`;
     }
