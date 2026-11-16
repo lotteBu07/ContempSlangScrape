@@ -324,6 +324,7 @@ const WORDS = [
     .btn { width: 100%; }
   }
   [hidden] { display: none !important; }
+  .lens { margin: 0; font-size: clamp(56px, 15vw, 80px); line-height: 1; }
   .btn.check { width: min(100%, 360px); font-size: 40px; line-height: 1; }
   .btn-ghost.say { font-size: 30px; line-height: 1; min-width: 88px; padding: 8px 20px; }
   /* answer box gets the same language tab as the word box */
@@ -793,7 +794,7 @@ const WORDS = [
     const target = answers(it).reduce((best, a) => lcsLen(typed, a) > lcsLen(typed, best) ? a : best);
     const d = diff(typed, target);
     card.innerHTML = `
-      <p class="msg try pop">Fast!</p>
+      <p class="lens pop" role="img" aria-label="Schau genau hin">🔍</p>
       <div class="compare">
         <div class="row you" aria-label="Dein Versuch"><span class="word">${d.you}</span></div>
         <div class="row right" aria-label="So ist es richtig"><svg class="ok-icon" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="19" fill="var(--good)"/><path d="M11 20.5l6 6 12-13" fill="none" stroke="var(--badge-ink)" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="word">${d.right}</span></div>
