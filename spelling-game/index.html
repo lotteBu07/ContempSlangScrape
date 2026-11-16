@@ -14,21 +14,23 @@
      en:    das englische Wort
      why:   kurzer Satz zum ENGLISCHEN Wort (Teil 1: Deutsch → Englisch)
      whyDe: kurzer Satz zum DEUTSCHEN Wort (Teil 2: Englisch → Deutsch)
+   In why und whyDe: Wörter und Buchstaben zwischen *Sternchen* stehen im Spiel
+   fett in einem kleinen Kasten. Beispiel: "*Thank* fängt mit *th* an."
    Neues Wort: eine Zeile kopieren, Text ändern, Komma am Ende nicht vergessen.
    ===================================================================== */
 const WORDS = [
-  { de: "Gelb",                         en: "yellow",              why: "Yellow hat zwei l und endet mit ow.",                  whyDe: "Gelb endet mit b, nicht mit p." },
-  { de: "Null",                         en: "zero",                why: "Zero fängt mit z an, aber man spricht es wie s.",      whyDe: "Null hat am Ende zwei l." },
-  { de: "Vier",                         en: "four",                why: "Four hat ein u, wie bei your.",                        whyDe: "Vier fängt mit v an und hat ie." },
-  { de: "Acht",                         en: "eight",               why: "Eight hat das gh, wie night.",                         whyDe: "Acht hat ch, wie lachen." },
-  { de: "Englisch",                     en: "English",             why: "Am Ende steht sh, nicht sch.", whyDe: "Englisch endet mit sch. Auf Englisch ist es nur sh." },
-  { de: "Tschüss",                      en: "See you later",       why: "See hat zwei e. Later hat nur ein t.",                 whyDe: "Tschüss fängt mit tsch an und endet mit ss." },
-  { de: "Danke",                        en: "Thank you",           why: "Thank fängt mit th an und endet mit nk.",              whyDe: "Danke hat nk, wie trinken." },
-  { de: "das, dies",                    en: "this",                why: "This fängt mit th an, wie the.",                       whyDe: "Dies hat ie, wie vier. Das hat nur ein s." },
-  { de: "sagen, sprechen",              en: "speak",               why: "Speak hat ea. Man spricht es wie ii.",                 whyDe: "Sprechen hat ch, wie lachen. Sagen hat ein g." },
-  { de: "Waschbär",                     en: "raccoon",             why: "Raccoon hat zwei c und zwei o.",                       whyDe: "Waschbär hat sch und ä, wie Bär." },
-  { de: "Kannst du das buchstabieren?", en: "Can you spell this?", why: "Spell hat am Ende zwei l.",                            whyDe: "Buchstabieren hat ie, wie vier. Kannst hat zwei n." },
-  { de: "Woher kommst du?",             en: "Where are you from?", why: "Where hat ein h nach dem w, wie what.",                whyDe: "Kommst hat zwei m. Woher hat ein h." },
+  { de: "Gelb",                         en: "yellow",              why: "*Yellow* hat zwei *l* und endet mit *ow*.",              whyDe: "*Gelb* endet mit *b*, nicht mit *p*." },
+  { de: "Null",                         en: "zero",                why: "*Zero* fängt mit *z* an, aber man spricht es wie *s*.",  whyDe: "*Null* hat am Ende zwei *l*." },
+  { de: "Vier",                         en: "four",                why: "*Four* hat ein *u*, wie bei *your*.",                    whyDe: "*Vier* fängt mit *v* an und hat *ie*." },
+  { de: "Acht",                         en: "eight",               why: "*Eight* hat das *gh*, wie *night*.",                     whyDe: "*Acht* hat *ch*, wie *lachen*." },
+  { de: "Englisch",                     en: "English",             why: "Am Ende steht *sh*, nicht *sch*.",                       whyDe: "*Englisch* endet mit *sch*. Auf Englisch ist es nur *sh*." },
+  { de: "Tschüss",                      en: "See you later",       why: "*See* hat zwei *e*. *Later* hat nur ein *t*.",           whyDe: "*Tschüss* fängt mit *tsch* an und endet mit *ss*." },
+  { de: "Danke",                        en: "Thank you",           why: "*Thank* fängt mit *th* an und endet mit *nk*.",          whyDe: "*Danke* hat *nk*, wie *trinken*." },
+  { de: "das, dies",                    en: "this",                why: "*This* fängt mit *th* an, wie *the*.",                   whyDe: "*Dies* hat *ie*, wie *vier*. *Das* hat nur ein *s*." },
+  { de: "sagen, sprechen",              en: "speak",               why: "*Speak* hat *ea*. Man spricht es wie *ii*.",             whyDe: "*Sprechen* hat *ch*, wie *lachen*. *Sagen* hat ein *g*." },
+  { de: "Waschbär",                     en: "raccoon",             why: "*Raccoon* hat zwei *c* und zwei *o*.",                   whyDe: "*Waschbär* hat *sch* und *ä*, wie *Bär*." },
+  { de: "Kannst du das buchstabieren?", en: "Can you spell this?", why: "*Spell* hat am Ende zwei *l*.",                          whyDe: "*Buchstabieren* hat *ie*, wie *vier*. *Kannst* hat zwei *n*." },
+  { de: "Woher kommst du?",             en: "Where are you from?", why: "*Where* hat ein *h* nach dem *w*, wie *what*.",          whyDe: "*Kommst* hat zwei *m*. *Woher* hat ein *h*." },
 ];
 /* ===================== Ende der Wörterliste ===================== */
 </script>
@@ -220,7 +222,13 @@ const WORDS = [
   }
   .why { flex-direction: row; justify-content: center; gap: 12px; text-align: left; }
   .why .bulb { flex: none; font-size: 46px; line-height: 1; }   /* about 1.5 lines of text */
-  .why .text { min-width: 0; }
+  .why .text { min-width: 0; line-height: 1.6; }
+  /* quoted words and letters inside a tip: bold, in their own small box */
+  .why .hl {
+    font-weight: 700; color: var(--ink); background: var(--card);
+    border: 2px solid var(--note-line); border-radius: 8px; padding: 0 6px;
+    white-space: nowrap; -webkit-box-decoration-break: clone; box-decoration-break: clone;
+  }
   .compare { width: 100%; display: grid; gap: 10px; }
   .row { display: grid; gap: 4px; padding: 12px; border-radius: 16px; }
   .row.you { background: var(--try-soft); }
@@ -324,6 +332,8 @@ const WORDS = [
   // ---------- helpers ----------
   const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   const clean = s => s.toLowerCase().replace(/[’`´]/g, "'").replace(/[?!.,]/g, "").replace(/\s+/g, " ").trim();
+  // *word* in a tip → bold word in a small box
+  const marked = s => esc(s).replace(/\*([^*]+)\*/g, '<b class="hl">$1</b>');
   const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
   // ---------- reading aloud ----------
@@ -703,7 +713,7 @@ const WORDS = [
       card.innerHTML = `
         <p class="badge">Jetzt richtig! 🎉</p>
         ${pair}
-        <p class="why"><span class="bulb" aria-hidden="true">💡</span><span class="text">${esc(it.dir === "en" ? w.why : w.whyDe)}</span></p>
+        <p class="why"><span class="bulb" aria-hidden="true">💡</span><span class="text">${marked(it.dir === "en" ? w.why : w.whyDe)}</span></p>
         <button class="btn green" type="button" id="next">Weiter →</button>`;
     }
     const next = document.getElementById("next");
