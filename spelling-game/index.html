@@ -251,7 +251,11 @@ const WORDS = [
     white-space: nowrap; -webkit-box-decoration-break: clone; box-decoration-break: clone;
   }
   .compare { width: 100%; display: grid; gap: 10px; }
-  .row { display: grid; gap: 4px; padding: 12px; border-radius: 16px; }
+  /* icon | word | same-width spacer, so the word stays centred */
+  .row { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 6px; padding: 12px 8px; border-radius: 16px; }
+  .row .word { grid-column: 2; }
+  .row.you .word { font-size: clamp(26px, 7vw, 42px); }
+  .row .ok-icon { grid-column: 1; width: 40px; height: 40px; }
   .row.you { background: var(--try-soft); }
   .row.right { background: var(--good-soft); }
   .row .who { font-size: 18px; font-weight: 600; color: var(--ink-soft); }
@@ -789,8 +793,8 @@ const WORDS = [
     card.innerHTML = `
       <p class="msg try pop">Fast!</p>
       <div class="compare">
-        <div class="row you"><span class="who">Deins:</span><span class="word">${d.you}</span></div>
-        <div class="row right"><span class="who">Richtig:</span><span class="word">${d.right}</span></div>
+        <div class="row you" aria-label="Dein Versuch"><span class="word">${d.you}</span></div>
+        <div class="row right" aria-label="So ist es richtig"><svg class="ok-icon" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="19" fill="var(--good)"/><path d="M11 20.5l6 6 12-13" fill="none" stroke="var(--badge-ink)" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="word">${d.right}</span></div>
       </div>
       <p class="label">Lies und merke!</p>
       <div class="timer" id="timer"><i></i></div>`;
