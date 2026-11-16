@@ -3,7 +3,7 @@
 <title>Frederiks Wörter-Spiel</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&display=swap">
 
 <script>
 /* =====================================================================
@@ -53,8 +53,10 @@ const WORDS = [
     --line: #c9d8ee;
     --sky-top: #cfe8ff;
     --badge-ink: #ffffff;
-    --font-display: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
-    --font-word: "Atkinson Hyperlegible", Verdana, system-ui, sans-serif;
+    /* One typeface everywhere: Andika, made for children learning to read
+       (school print letters: a and g like handwriting, clear I and l). Fallback: Comic Sans. */
+    --font-display: "Andika", "Comic Sans MS", "Comic Neue", "Chalkboard SE", system-ui, sans-serif;
+    --font-word: var(--font-display);
     --radius: 22px;
   }
   @media (prefers-color-scheme: dark) {
