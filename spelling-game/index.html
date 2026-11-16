@@ -21,13 +21,13 @@ const WORDS = [
   { de: "vier",                          en: "four",               why: "Four hat ein u, wie bei your." },
   { de: "acht",                          en: "eight",              why: "Eight hat das gh, wie night." },
   { de: "Englisch",                      en: "English",            why: "Am Ende steht sh, nicht sch. Und vorne ein großes E." },
-  { de: "Tschüss",                       en: "see you later",      why: "See hat zwei e. Later hat nur ein t." },
-  { de: "Danke",                         en: "thank you",          why: "Thank fängt mit th an und endet mit nk." },
+  { de: "Tschüss",                       en: "See you later",      why: "See hat zwei e. Later hat nur ein t." },
+  { de: "Danke",                         en: "Thank you",          why: "Thank fängt mit th an und endet mit nk." },
   { de: "das, dies",                     en: "this",               why: "This fängt mit th an, wie the." },
   { de: "sagen, sprechen",               en: "speak",              why: "Speak hat ea. Man spricht es wie ii." },
   { de: "Waschbär",                      en: "raccoon",            why: "Raccoon hat zwei c und zwei o." },
-  { de: "Kannst du das buchstabieren?",  en: "can you spell this", why: "Spell hat am Ende zwei l." },
-  { de: "Woher kommst du?",              en: "where are you from", why: "Where hat ein h nach dem w, wie what." },
+  { de: "Kannst du das buchstabieren?",  en: "Can you spell this?", why: "Spell hat am Ende zwei l." },
+  { de: "Woher kommst du?",              en: "Where are you from?", why: "Where hat ein h nach dem w, wie what." },
 ];
 /* ===================== Ende der Wörterliste ===================== */
 </script>
@@ -139,6 +139,8 @@ const WORDS = [
     transition: transform .08s ease, border-color .15s ease, background .15s ease;
   }
   .btn-ghost:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .btn-ghost.talking { border-color: var(--good); background: var(--good-soft); }
+  .btn-ghost:disabled { opacity: .6; cursor: default; transform: none; }
   .btn-ghost:active { transform: translateY(2px) scale(.97); background: var(--bg); }
   button:focus-visible, input:focus-visible { outline: 4px solid var(--try); outline-offset: 3px; }
 
@@ -232,17 +234,61 @@ const WORDS = [
   const clean = s => s.toLowerCase().replace(/[’`´]/g, "'").replace(/[?!.,]/g, "").replace(/\s+/g, " ").trim();
   const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-  function speak(text) {
+  // ---------- reading aloud (British English) ----------
+  // 1st choice: Claude's voice (works in Chrome/Edge on claude.ai).
+  // Backup: the browser's own British voice (iPhone, Safari, opened as a file).
+  let tts = null, ttsOff = false, turn = 0, keepUtter = null;
+  const CLAUDE_VOICES = ["airy", "rounded", "glassy", "buttery"];   // alternate voices
+  try { window.claude?.use?.("tts").then(t => { tts = t; }).catch(() => {}); } catch (e) {}
+
+  let gbVoices = [];
+  function loadVoices() {
     try {
-      if (!("speechSynthesis" in window)) return;
-      speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = "en-GB"; u.rate = 0.8;
-      const v = speechSynthesis.getVoices().find(v => /^en(-|_)GB/i.test(v.lang)) ||
-                speechSynthesis.getVoices().find(v => /^en/i.test(v.lang));
-      if (v) u.voice = v;
-      speechSynthesis.speak(u);
+      const all = speechSynthesis.getVoices();
+      gbVoices = all.filter(v => /^en[-_]GB/i.test(v.lang));
+      if (!gbVoices.length) gbVoices = all.filter(v => /^en/i.test(v.lang));
     } catch (e) {}
+  }
+  if ("speechSynthesis" in window) {
+    loadVoices();
+    try { speechSynthesis.addEventListener("voiceschanged", loadVoices); } catch (e) {}
+  }
+
+  function browserSpeak(text, btn) {
+    if (!("speechSynthesis" in window)) { noVoice(btn); return; }
+    if (!gbVoices.length) loadVoices();
+    if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "en-GB"; u.rate = 0.85;
+    if (gbVoices.length) u.voice = gbVoices[turn % gbVoices.length];   // alternate voices
+    u.onstart = () => btn.classList.add("talking");
+    u.onend = u.onerror = () => btn.classList.remove("talking");
+    keepUtter = u;                      // iPhone: keep a reference or it may stay silent
+    speechSynthesis.speak(u);
+    if (speechSynthesis.paused) speechSynthesis.resume();
+  }
+
+  function noVoice(btn) {
+    btn.textContent = "Kein Ton in diesem Browser";
+    btn.disabled = true;
+  }
+
+  function speak(text, btn) {
+    turn++;
+    if (tts && !ttsOff) {
+      btn.classList.add("talking");
+      tts.speak(text, { voice: CLAUDE_VOICES[turn % CLAUDE_VOICES.length], language: "en-GB", rate: 0.85 })
+        .then(() => btn.classList.remove("talking"))
+        .catch(err => {
+          btn.classList.remove("talking");
+          const code = err && err.code;
+          if (code === "not_granted") { ttsOff = true; btn.hidden = true; return; }   // viewer turned it off
+          if (code === "stopped" || code === "busy" || code === "no_gesture" || code === "rate_limited") return;
+          ttsOff = true; browserSpeak(text, btn);                                   // service failed: use browser voice
+        });
+      return;
+    }
+    browserSpeak(text, btn);
   }
 
   // Build a round: an easy new word first, then old mistakes mixed into places 2–5.
@@ -270,6 +316,7 @@ const WORDS = [
     for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--)
       L[i][j] = a[i] === b[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
     const okA = new Array(n).fill(false), okB = new Array(m).fill(false);
+    for (let k = 0; k < m; k++) if (/[?!.,]/.test(b[k])) okB[k] = true;   // ? and ! are not spelling mistakes
     let i = 0, j = 0;
     while (i < n && j < m) {
       if (a[i] === b[j]) { okA[i] = okB[j] = true; i++; j++; }
@@ -328,7 +375,8 @@ const WORDS = [
         <button class="btn" type="submit">Fertig ✓</button>
       </form>`;
     const input = document.getElementById("answer");
-    document.getElementById("say").onclick = () => speak(w.en);
+    const sayBtn = document.getElementById("say");
+    sayBtn.onclick = () => speak(w.en, sayBtn);
     document.getElementById("f").onsubmit = e => {
       e.preventDefault();
       const typed = input.value.trim();
