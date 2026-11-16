@@ -505,7 +505,7 @@ const WORDS = [
   const LANG_NAME = { de: "Deutsch", en: "Englisch" };
   const shownLang = it => it.dir === "en" ? "de" : "en";        // language of the word in the word box
   const typedLang = it => it.dir;                               // language he types in the answer box
-  const PLACEHOLDER = { de: "Tippe …", en: "Type …" };           // written in the box's own language
+  const PLACEHOLDER = { de: "Tippe …", en: "Tippe …" };          // always German, so Frederik understands it
   // no capitals needed; ä/ö/ü/ß may also be typed as ae/oe/ue/ss
   const norm = s => clean(s).replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss");
 
