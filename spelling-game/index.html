@@ -99,9 +99,9 @@ const WORDS = [
   .dot.now { border-color: var(--accent); transform: scale(1.15); }
   .dot.star { border-color: var(--good); background: var(--good-soft); }
   .dot.done { border-color: var(--try); background: var(--try-soft); }
-  .plant { width: 76px; height: 76px; background: var(--card); border: 3px solid var(--line); border-radius: 20px; display: grid; place-items: center; }
-  .plant svg { width: 68px; height: 68px; overflow: visible; }
-  .plant .sprout { transform-origin: 40px 66px; }
+  .plant { width: 136px; height: 84px; background: var(--card); border: 3px solid var(--line); border-radius: 20px; display: grid; place-items: center; }
+  .plant svg { width: 124px; height: 76px; overflow: visible; }
+  .plant .sprout { transform-origin: 44px 64px; }
   .plant.grow .sprout { animation: grow .6s ease-out; }
   @keyframes grow { 0% { transform: scale(.9); } 60% { transform: scale(1.08); } 100% { transform: scale(1); } }
   @media (prefers-reduced-motion: reduce) { .plant.grow .sprout { animation: none; } }
@@ -220,7 +220,7 @@ const WORDS = [
 <main>
   <div class="bar">
     <div class="dots" id="dots" aria-label="Fortschritt"></div>
-    <div class="plant" id="plant" role="img" aria-label="Deine Pflanze" title="Deine Pflanze wächst bei jedem richtigen Wort."></div>
+    <div class="plant" id="plant" role="img" aria-label="Deine Pflanze" title="Dein Kürbis wächst bei jedem Wort."></div>
   </div>
   <section class="card" id="card" aria-live="polite"></section>
 </main>
@@ -236,11 +236,13 @@ const WORDS = [
 
   const missed = new Set();       // words he got wrong (only for this visit)
   const seen = new Map();         // how often each word was asked
-  // The plant: grows with every word right on the first try.
-  // A wrong first try makes it a bit yellow or brown. It never dies:
-  // the next right word makes it greener again.
-  let growth = 0, health = 0;     // health: 0 = green … 3 = yellow-brown (never worse)
-  const MAX_GROW = 14;            // after this it stops getting taller and gets a flower
+  // The pumpkin plant grows with every finished word, right or wrong.
+  // Words wrong on the first try make it slowly a bit yellow or brown.
+  // It never dies: words right on the first try make it greener again.
+  // Each pumpkin: small after 5 words, big after 7, carved face after 10.
+  // Every 10 words a new pumpkin starts (up to 3).
+  let growth = 0;                 // finished words
+  let thirst = 0;                 // 0–6; colour changes every 2 points (never worse than yellow-brown)
   let round = [], idx = 0, results = [], firstTry = true, hideTimer = null, roundNo = 0;
 
   // ---------- helpers ----------
@@ -361,40 +363,70 @@ const WORDS = [
   }
 
   function drawPlant(bump) {
-    const LEAF = ["#3fbf5a", "#9cc23c", "#d1b53a", "#b58a45"];
-    const STEM = ["#2e8f43", "#73973a", "#a58c36", "#8a6a36"];
-    const g = Math.min(growth, MAX_GROW);
-    const base = 64, h = 8 + g * 3.8, top = base - h;
-    const lean = health * 3;                                  // a thirsty plant leans a little
-    const droop = 30 - health * 14;                           // leaf angle: up when healthy, down when thirsty
-    const leaf = (x, y, side, size) =>
-      `<ellipse cx="${x + side * size * 0.9}" cy="${y}" rx="${size}" ry="${size * 0.45}" fill="${LEAF[health]}"
-        transform="rotate(${-side * droop} ${x} ${y})"/>`;
+    const LEAF = ["#3fbf5a", "#8fc23e", "#c4b43c", "#b38d48"];
+    const STEM = ["#2e8f43", "#6f973a", "#9a8a38", "#866b38"];
+    const health = Math.min(3, Math.floor(thirst / 2));
+    const base = 62, sx = 44;                                 // where the stem leaves the soil
+    const h = 8 + Math.min(growth, 12) * 3.6, top = base - h;
+    const droop = 22 - health * 9;                            // leaves point up when healthy, hang when thirsty
+    const lean = health * 2;
+    // broad pumpkin leaf: two overlapping lobes
+    const leaf = (x, y, side, size) => {
+      const cx = x + side * size * 0.95;
+      return `<g transform="rotate(${-side * droop} ${x} ${y})" fill="${LEAF[health]}">
+        <ellipse cx="${cx}" cy="${y}" rx="${size}" ry="${size * 0.72}"/>
+        <ellipse cx="${cx + side * size * 0.35}" cy="${y - size * 0.35}" rx="${size * 0.7}" ry="${size * 0.55}"/></g>`;
+    };
     let leaves = "";
-    const n = Math.min(g, 10);
+    const n = Math.min(growth, 8);
     for (let k = 0; k < n; k++) {
-      const t = (k + 1) / (n + 1);                            // 0 at the soil, 1 at the top
-      const y = base - t * h;
-      const x = 40 + lean * t;
-      leaves += leaf(x, y, k % 2 ? 1 : -1, 5 + Math.min(k, 5) * 0.5);
+      const t = (k + 1) / (n + 1);
+      leaves += leaf(sx + lean * t, base - t * h, k % 2 ? 1 : -1, 4.5 + Math.min(k, 4) * 0.6);
     }
-    const tx = 40 + lean;
-    leaves += leaf(tx, top, -1, 4.5) + leaf(tx, top, 1, 4.5);  // the two little top leaves
-    const flower = growth >= MAX_GROW
-      ? `<g transform="translate(${tx} ${top - 4})">${[0, 72, 144, 216, 288].map(a =>
-          `<circle cx="${Math.cos(a * Math.PI / 180) * 4}" cy="${Math.sin(a * Math.PI / 180) * 4}" r="3.2" fill="#ff8fb3"/>`).join("")}
-          <circle r="2.6" fill="#ffd23f"/></g>` : "";
+    const tx = sx + lean;
+    leaves += leaf(tx, top, -1, 4) + leaf(tx, top, 1, 4);
+
+    // pumpkins: right of the stem first, then far right, then left
+    const SLOTS = [{ x: 80, end: 80 }, { x: 104, end: 104 }, { x: 16, end: 16 }];
+    let vines = "", pumpkins = "";
+    SLOTS.forEach((slot, i) => {
+      const age = growth - i * 10;                            // words since this pumpkin's turn began
+      if (age < 3) return;
+      const reach = Math.min(1, (age - 2) / 3);               // the vine creeps out over 3 words
+      const ex = sx + (slot.end - sx) * reach;
+      vines += `<path d="M${sx} ${base + 1} Q ${(sx + ex) / 2} ${base - 4} ${ex} ${base + 1}" stroke="${STEM[health]}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
+      if (age < 5) return;
+      const big = age >= 7, carved = age >= 10;
+      const rx = big ? 11 : 5, ry = big ? 8.5 : 4, cy = base + 2 - ry + 1;
+      const fill = big ? "#f28c1e" : "#c9b23a";               // a young pumpkin is still greenish
+      const rib = big ? "#d2700f" : "#a99630";
+      let face = "";
+      if (carved) {
+        const c = "#ffe14d", o = `stroke="#7a3500" stroke-width=".6"`;
+        face = `<path d="M${slot.x - 6} ${cy - 2} l2.6 -3.4 l2.6 3.4 z" fill="${c}" ${o}/>
+          <path d="M${slot.x + 0.8} ${cy - 2} l2.6 -3.4 l2.6 3.4 z" fill="${c}" ${o}/>
+          <path d="M${slot.x - 6} ${cy + 1.6} q6 5.4 12 0 l-2 1 l-2 -1 l-2 1.2 l-2 -1.2 l-2 1 z" fill="${c}" ${o}/>`;
+      }
+      pumpkins += `<g>
+        <path d="M${slot.x} ${cy - ry + 1} q1 -3 3 -3.6" stroke="#5f7a2a" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <ellipse cx="${slot.x}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${fill}"/>
+        <ellipse cx="${slot.x}" cy="${cy}" rx="${rx * 0.45}" ry="${ry}" fill="none" stroke="${rib}" stroke-width="1"/>
+        ${face}</g>`;
+    });
+
     plantEl.innerHTML = `
-      <svg viewBox="0 0 80 80" aria-hidden="true">
+      <svg viewBox="0 0 120 80" aria-hidden="true">
+        <path d="M2 78 Q 16 62 60 61 Q 104 62 118 78 Z" fill="#8a5a33"/>
+        <circle cx="28" cy="71" r="1.6" fill="#6b4426"/><circle cx="62" cy="70" r="1.4" fill="#6b4426"/>
+        <circle cx="92" cy="73" r="1.6" fill="#6b4426"/><circle cx="48" cy="74" r="1.2" fill="#a8744a"/>
+        ${vines}
         <g class="sprout">
-          <path d="M40 ${base} Q ${40 + lean * 0.2} ${base - h / 2} ${tx} ${top}" stroke="${STEM[health]}" stroke-width="3" fill="none" stroke-linecap="round"/>
-          ${leaves}${flower}
+          <path d="M${sx} ${base + 1} Q ${sx + lean * 0.2} ${base - h / 2} ${tx} ${top}" stroke="${STEM[health]}" stroke-width="3" fill="none" stroke-linecap="round"/>
+          ${leaves}
         </g>
-        <path d="M6 76 Q 14 62 40 61 Q 66 62 74 76 Z" fill="#8a5a33"/>
-        <circle cx="24" cy="70" r="1.6" fill="#6b4426"/><circle cx="46" cy="67" r="1.4" fill="#6b4426"/>
-        <circle cx="58" cy="72" r="1.6" fill="#6b4426"/><circle cx="34" cy="73" r="1.2" fill="#a8744a"/>
+        ${pumpkins}
       </svg>`;
-    plantEl.setAttribute("aria-label", health === 0 ? "Deine Pflanze ist grün und gesund." : "Deine Pflanze braucht ein richtiges Wort.");
+    plantEl.setAttribute("aria-label", health === 0 ? "Dein Kürbis ist grün und gesund." : "Dein Kürbis braucht ein richtiges Wort.");
     if (bump) { plantEl.classList.remove("grow"); void plantEl.offsetWidth; plantEl.classList.add("grow"); }
   }
 
@@ -466,7 +498,7 @@ const WORDS = [
   function check(typed) {
     const it = round[idx];
     if (answers(it).some(a => norm(a) === norm(typed))) return gotIt();
-    if (firstTry) { missed.add(key(it.w, it.dir)); health = Math.min(3, health + 1); drawPlant(); }
+    if (firstTry) { missed.add(key(it.w, it.dir)); thirst = Math.min(6, thirst + 1); drawPlant(); }
     firstTry = false;
     showCompare(typed);
   }
@@ -493,7 +525,7 @@ const WORDS = [
     const it = round[idx], w = it.w;
     const solution = it.dir === "en" ? w.en : w.de;
     if (firstTry) {
-      results[idx] = "star"; growth++; health = Math.max(0, health - 1); drawPlant(true);
+      results[idx] = "star"; growth++; thirst = Math.max(0, thirst - 1); drawPlant(true);
       missed.delete(key(w, it.dir));
       drawDots();
       card.innerHTML = `
@@ -502,7 +534,7 @@ const WORDS = [
         <button class="btn green" type="button" id="next">Weiter →</button>`;
       confetti(8);
     } else {
-      results[idx] = "done";
+      results[idx] = "done"; growth++; drawPlant(true);
       drawDots();
       card.innerHTML = `
         <p class="msg good pop">Jetzt richtig! 🎉</p>
