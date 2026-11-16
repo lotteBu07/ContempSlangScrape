@@ -704,7 +704,8 @@ const WORDS = [
     let pebbles = "";
     for (let x = 18; x < W; x += 56) pebbles += `<circle cx="${x}" cy="${G + 6 + (x % 5)}" r="1.4" fill="#4a2e18"/><circle cx="${x + 27}" cy="${G + 4 + (x % 3)}" r="1.1" fill="#9a6a44"/>`;
 
-    const stageName = growing ? STAGES[Math.min(stage, 10)] : STAGES[10];
+    // first word of a round (seed): an invitation instead of a description
+    const stageName = !growing ? STAGES[10] : stage === 0 ? "Lass die Pflanze wachsen!" : STAGES[Math.min(stage, 10)];
     plantEl.innerHTML = `
       <p class="stage">${esc(stageName)}</p>
       ${finished.length ? `<p class="pcount" aria-label="${finished.length} Kürbisse">🎃 ${finished.length}</p>` : ""}
