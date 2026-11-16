@@ -316,9 +316,41 @@ const WORDS = [
     .dot.gap { margin-left: 10px; }
     .btn { width: 100%; }
   }
+  [hidden] { display: none !important; }
+  /* ---------- teacher page: plain and easy ---------- */
+  .teacher { max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; font-size: 18px; }
+  .teacher h1 { margin: 8px 0 0; font-size: 32px; }
+  .t-help { margin: 0; line-height: 1.5; color: var(--ink-soft); }
+  .t-list { padding-left: 1.2em; display: grid; gap: 4px; }
+  .teacher code { font-family: inherit; font-weight: 700; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 0 5px; }
+  .t-old, .t-make { background: var(--card); border: 2px solid var(--line); border-radius: 16px; padding: 14px; display: grid; gap: 10px; }
+  .t-old-row, .t-out-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .t-old-row input { flex: 1 1 220px; min-width: 0; }
+  .t-count { margin: 0; font-weight: 700; }
+  .t-rows { display: grid; gap: 12px; }
+  .t-row { background: var(--card); border: 2px solid var(--line); border-radius: 16px; padding: 12px 14px; display: grid; gap: 10px; grid-template-columns: 1fr 1fr; }
+  .t-row.bad { border-color: var(--try); }
+  .t-row .t-head { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: var(--ink-soft); }
+  .t-row label { display: grid; gap: 4px; font-size: 15px; font-weight: 700; color: var(--ink-soft); min-width: 0; }
+  .teacher input, .teacher textarea {
+    font: inherit; font-size: 18px; color: var(--ink); background: var(--bg);
+    border: 2px solid var(--line); border-radius: 10px; padding: 8px 10px; width: 100%; min-width: 0;
+  }
+  .teacher textarea { resize: vertical; word-break: break-all; font-size: 15px; }
+  .teacher input:focus, .teacher textarea:focus { border-color: var(--accent); outline: none; }
+  .t-del { font: inherit; font-size: 15px; font-weight: 700; color: var(--try); background: none; border: 2px solid var(--line); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+  .t-del:active { background: var(--try-soft); }
+  .t-msg { margin: 0; font-weight: 700; }
+  .t-msg.ok { color: var(--good); }
+  .t-msg.warn { color: var(--try); }
+  .t-make .btn { justify-self: start; }
+  .t-out { display: grid; gap: 8px; }
+  .t-try { display: inline-grid; place-items: center; text-decoration: none; }
+  #addRow { justify-self: start; }
+  @media (max-width: 560px) { .t-row { grid-template-columns: 1fr; } }
 </style>
 
-<main>
+<main id="game">
   <div class="bar">
     <div class="dots" id="dots" aria-label="Fortschritt"></div>
   </div>
@@ -327,6 +359,40 @@ const WORDS = [
   <section class="card" id="card" aria-live="polite"></section>
 </main>
 <div class="confetti" id="confetti" aria-hidden="true"></div>
+
+<!-- Teacher page: open the game address with #lehrer at the end. Frederik never sees it. -->
+<section class="teacher" id="teacher" hidden>
+  <h1>Wörter für Frederik</h1>
+  <p class="t-help">Jede Karte ist ein Wort. <b>Deutsch</b> und <b>Englisch</b> müssen ausgefüllt sein, die Tipps sind freiwillig.</p>
+  <ul class="t-help t-list">
+    <li>Zwei richtige deutsche Wörter: mit Komma trennen, zum Beispiel <code>das, dies</code>.</li>
+    <li>Zwei richtige englische Antworten: mit <code>|</code> trennen, zum Beispiel <code>he's|he is</code>. Das Spiel zeigt die erste.</li>
+    <li>In den Tipps: Wörter zwischen *Sternchen* stehen im Spiel fett im Kasten.</li>
+  </ul>
+  <div class="t-old">
+    <label for="oldLink">Einen alten Link weiter bearbeiten:</label>
+    <div class="t-old-row">
+      <input id="oldLink" type="text" placeholder="Alten Link hier einfügen" autocomplete="off" spellcheck="false">
+      <button type="button" class="btn-ghost" id="loadOld">Laden</button>
+    </div>
+    <p class="t-msg" id="oldMsg" role="status"></p>
+  </div>
+  <p class="t-count" id="tCount"></p>
+  <div id="rows" class="t-rows"></div>
+  <button type="button" class="btn-ghost" id="addRow">+ Wort hinzufügen</button>
+  <div class="t-make">
+    <button type="button" class="btn" id="makeLink">Link erstellen</button>
+    <p class="t-msg" id="makeMsg" role="status"></p>
+    <div id="linkOut" class="t-out" hidden>
+      <label for="linkText">Diesen Link an Frederik schicken:</label>
+      <textarea id="linkText" readonly rows="4"></textarea>
+      <div class="t-out-row">
+        <button type="button" class="btn-ghost" id="copyLink">Kopieren</button>
+        <a class="btn-ghost t-try" id="tryLink" href="#" target="_blank" rel="noopener">Spiel testen</a>
+      </div>
+    </div>
+  </div>
+</section>
 
 <script>
 (function () {
@@ -345,6 +411,7 @@ const WORDS = [
   // 10 stages, one per word: seed, sprout, seed leaves, first true leaf, vine,
   // flowers, small pumpkin, big green pumpkin, turning orange, ripe, carved face.
   // After that a new pumpkin grows on the vine every 10 words (up to 3).
+  let LIST = WORDS;               // the words in play: the list above, or the list inside a link
   let growth = 0;                 // finished words
   let thirst = 0;                 // 0–6; colour changes every 2 points (never worse than yellow-brown)
   let round = [], idx = 0, results = [], firstTry = true, hideTimer = null, roundNo = 0;
@@ -430,9 +497,9 @@ const WORDS = [
   function buildPart(dir) {
     const seenN = w => seen.get(key(w, dir)) || 0;
     const byLeastSeen = list => shuffle(list).sort((a, b) => seenN(a) - seenN(b));
-    const missedWords = WORDS.filter(w => missed.has(key(w, dir)));
+    const missedWords = LIST.filter(w => missed.has(key(w, dir)));
     const review = shuffle(missedWords).slice(0, Math.min(3, ROUND_SIZE - 1));
-    let fresh = byLeastSeen(WORDS.filter(w => !missed.has(key(w, dir))));
+    let fresh = byLeastSeen(LIST.filter(w => !missed.has(key(w, dir))));
     if (fresh.length === 0) fresh = review.splice(0, 1);          // everything was missed: start anyway
     const need = ROUND_SIZE - review.length;
     const newOnes = fresh.slice(0, need);
@@ -779,8 +846,158 @@ const WORDS = [
     document.getElementById("again").onclick = startRound;
   }
 
+  // ================= Word list inside a link =================
+  // The whole list is packed into the part after # (letters and digits only),
+  // so no account, server or database is needed.
+  const PUBLIC_URL = "https://claude.ai/artifact/8U4FPLGRmWKJuCUhyXvxPi";   // the game's shared address
+  const LINK_LIMIT = 4000;        // longer links can break in messengers
+  const B32 = "abcdefghijklmnopqrstuvwxyz234567";
+  function b32enc(bytes) {
+    let out = "", val = 0, bits = 0;
+    for (const b of bytes) { val = ((val << 8) | b) & 0xffff; bits += 8; while (bits >= 5) { out += B32[(val >>> (bits - 5)) & 31]; bits -= 5; } }
+    if (bits > 0) out += B32[(val << (5 - bits)) & 31];
+    return out;
+  }
+  function b32dec(str) {
+    const out = []; let val = 0, bits = 0;
+    for (const c of str) {
+      const i = B32.indexOf(c); if (i < 0) throw new Error("bad link");
+      val = ((val << 5) | i) & 0xffff; bits += 5;
+      if (bits >= 8) { out.push((val >>> (bits - 8)) & 255); bits -= 8; }
+    }
+    return new Uint8Array(out);
+  }
+  const canZip = typeof CompressionStream === "function" && typeof DecompressionStream === "function";
+  async function pipe(bytes, stream) {
+    return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer());
+  }
+  async function encodeList(list) {
+    const text = list.map(w => [w.de, w.en, w.why || "", w.whyDe || ""].join("\u001f")).join("\u001e");
+    const bytes = new TextEncoder().encode(text);
+    return canZip ? "w1" + b32enc(await pipe(bytes, new CompressionStream("deflate-raw"))) : "w0" + b32enc(bytes);
+  }
+  async function decodeList(code) {
+    let bytes = b32dec(code.slice(2));
+    if (code[1] === "1") bytes = await pipe(bytes, new DecompressionStream("deflate-raw"));
+    return new TextDecoder().decode(bytes).split("\u001e").map(row => {
+      const [de = "", en = "", why = "", whyDe = ""] = row.split("\u001f");
+      return { de: de.trim(), en: en.trim(), why: why.trim(), whyDe: whyDe.trim() };
+    }).filter(w => w.de && w.en);
+  }
+  const isListCode = h => /^w[01][a-z2-7]+$/.test(h);
+  const baseUrl = () => location.protocol === "file:" ? location.href.split("#")[0] : PUBLIC_URL;
+
+  // ================= Teacher page =================
+  const teacherEl = document.getElementById("teacher");
+  const gameEl = document.getElementById("game");
+  const rowsEl = document.getElementById("rows");
+  const DRAFT_KEY = "frederik-wortliste-entwurf";
+  let teacherReady = false;
+
+  function rowHTML(w) {
+    const f = (cls, label, val, ph) =>
+      `<label>${label}<input class="${cls}" type="text" value="${esc(val || "")}" placeholder="${ph}" autocomplete="off" spellcheck="false"></label>`;
+    return `<div class="t-row"><div class="t-head"><span class="t-num"></span><button type="button" class="t-del">Löschen</button></div>
+      ${f("f-de", "Deutsch", w.de, "zum Beispiel: die Schule")}
+      ${f("f-en", "Englisch", w.en, "zum Beispiel: school")}
+      ${f("f-why", "Tipp zum englischen Wort", w.why, "*School* hat *ch*.")}
+      ${f("f-whyDe", "Tipp zum deutschen Wort", w.whyDe, "*Schule* hat *sch*.")}</div>`;
+  }
+  function readRows() {
+    return [...rowsEl.querySelectorAll(".t-row")].map(r => ({
+      de: r.querySelector(".f-de").value.trim(), en: r.querySelector(".f-en").value.trim(),
+      why: r.querySelector(".f-why").value.trim(), whyDe: r.querySelector(".f-whyDe").value.trim(),
+    }));
+  }
+  function renumber() {
+    const rows = rowsEl.querySelectorAll(".t-row");
+    rows.forEach((r, k) => { r.querySelector(".t-num").textContent = "Wort " + (k + 1); });
+    document.getElementById("tCount").textContent = rows.length + (rows.length === 1 ? " Wort" : " Wörter");
+  }
+  function fillRows(list) { rowsEl.innerHTML = list.map(rowHTML).join(""); renumber(); }
+  function saveDraft() { try { localStorage.setItem(DRAFT_KEY, JSON.stringify(readRows())); } catch (e) {} }
+  function loadDraft() { try { const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null"); return Array.isArray(d) && d.length ? d : null; } catch (e) { return null; } }
+  function setMsg(id, text, kind) { const el = document.getElementById(id); el.textContent = text; el.className = "t-msg " + (kind || ""); }
+
+  function setupTeacher() {
+    if (teacherReady) return; teacherReady = true;
+    fillRows(loadDraft() || WORDS);
+    rowsEl.addEventListener("input", () => { saveDraft(); document.getElementById("linkOut").hidden = true; setMsg("makeMsg", ""); });
+    rowsEl.addEventListener("click", e => {
+      if (!e.target.classList.contains("t-del")) return;
+      e.target.closest(".t-row").remove(); renumber(); saveDraft();
+    });
+    document.getElementById("addRow").onclick = () => {
+      rowsEl.insertAdjacentHTML("beforeend", rowHTML({}));
+      renumber(); rowsEl.lastElementChild.querySelector(".f-de").focus();
+    };
+    document.getElementById("loadOld").onclick = async () => {
+      const raw = document.getElementById("oldLink").value.trim();
+      const code = raw.split("#").pop();
+      if (!isListCode(code)) { setMsg("oldMsg", "Das ist kein Wörter-Link. Bitte den ganzen Link einfügen.", "warn"); return; }
+      try {
+        const list = await decodeList(code);
+        fillRows(list); saveDraft();
+        setMsg("oldMsg", list.length + " Wörter geladen.", "ok");
+      } catch (e) { setMsg("oldMsg", "Dieser Link ist kaputt. Bitte den ganzen Link einfügen.", "warn"); }
+    };
+    document.getElementById("makeLink").onclick = makeLink;
+    document.getElementById("copyLink").onclick = () => {
+      const ta = document.getElementById("linkText");
+      const done = () => setMsg("makeMsg", "Kopiert. Jetzt an Frederik schicken.", "ok");
+      const manual = () => { ta.focus(); ta.select(); setMsg("makeMsg", "Der Link ist markiert. Jetzt kopieren (Strg+C oder lange drücken).", "ok"); };
+      try { navigator.clipboard.writeText(ta.value).then(done, manual); } catch (e) { manual(); }
+    };
+  }
+
+  async function makeLink() {
+    const rows = [...rowsEl.querySelectorAll(".t-row")];
+    rows.forEach(r => r.classList.remove("bad"));
+    const all = readRows();
+    const missing = all.map((w, k) => (!w.de || !w.en) && (w.de || w.en || w.why || w.whyDe) ? k : -1).filter(k => k >= 0);
+    if (missing.length) {
+      missing.forEach(k => rows[k].classList.add("bad"));
+      setMsg("makeMsg", "Bei " + missing.map(k => "Wort " + (k + 1)).join(", ") + " fehlt Deutsch oder Englisch.", "warn");
+      rows[missing[0]].scrollIntoView({ block: "center" });
+      return;
+    }
+    const list = all.filter(w => w.de && w.en);
+    if (list.length < 2) { setMsg("makeMsg", "Bitte mindestens 2 Wörter eintragen.", "warn"); return; }
+    const link = baseUrl() + "#" + await encodeList(list);
+    const out = document.getElementById("linkOut");
+    if (link.length > LINK_LIMIT) {
+      out.hidden = true;
+      const fit = Math.max(2, Math.floor(list.length * LINK_LIMIT / link.length) - 1);
+      setMsg("makeMsg", "Der Link ist zu lang für " + list.length + " Wörter. Bitte nimm weniger Wörter pro Link, höchstens etwa " + fit + ". Kürzere Tipps helfen auch.", "warn");
+      return;
+    }
+    document.getElementById("linkText").value = link;
+    document.getElementById("tryLink").href = link;
+    out.hidden = false;
+    setMsg("makeMsg", "Fertig: " + list.length + " Wörter im Link.", "ok");
+  }
+
+  // ================= Start =================
+  async function boot() {
+    const h = location.hash.slice(1);
+    if (h === "lehrer") {                     // teacher page
+      clearTimeout(hideTimer);
+      gameEl.hidden = true; teacherEl.hidden = false;
+      setupTeacher();
+      return;
+    }
+    teacherEl.hidden = true; gameEl.hidden = false;
+    LIST = WORDS;
+    if (isListCode(h)) {
+      try { const l = await decodeList(h); if (l.length >= 2) LIST = l; } catch (e) {}   // broken link: play the normal list
+    }
+    missed.clear(); seen.clear(); growth = 0; thirst = 0; roundNo = 0;
+    drawPlant();
+    startRound();
+  }
+
   document.addEventListener("touchstart", () => {}, { passive: true });   // makes buttons react on tap (iPad, iPhone)
-  drawPlant();
-  startRound();
+  window.addEventListener("hashchange", boot);
+  boot();
 })();
 </script>
