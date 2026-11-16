@@ -1,0 +1,412 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Frederiks Wörter-Spiel</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+
+<script>
+/* =====================================================================
+   WÖRTERLISTE – HIER BEARBEITEN
+   ---------------------------------------------------------------------
+   Jede Zeile ist ein Wort. Drei Teile:
+     de:  der deutsche Hinweis (das sieht Frederik)
+     en:  das englische Wort (das muss er schreiben)
+     why: ein kurzer deutscher Satz, warum man es so schreibt
+   Neues Wort: eine Zeile kopieren, Text ändern, Komma am Ende nicht vergessen.
+   ===================================================================== */
+const WORDS = [
+  { de: "gelb",                          en: "yellow",             why: "Yellow hat zwei l und endet mit ow." },
+  { de: "null",                          en: "zero",               why: "Zero fängt mit z an, aber man spricht es wie s." },
+  { de: "vier",                          en: "four",               why: "Four hat ein u, wie bei your." },
+  { de: "acht",                          en: "eight",              why: "Eight hat das gh, wie night." },
+  { de: "Englisch",                      en: "English",            why: "Am Ende steht sh, nicht sch. Und vorne ein großes E." },
+  { de: "Tschüss",                       en: "see you later",      why: "See hat zwei e. Later hat nur ein t." },
+  { de: "Danke",                         en: "thank you",          why: "Thank fängt mit th an und endet mit nk." },
+  { de: "das, dies",                     en: "this",               why: "This fängt mit th an, wie the." },
+  { de: "sagen, sprechen",               en: "speak",              why: "Speak hat ea. Man spricht es wie ii." },
+  { de: "Waschbär",                      en: "raccoon",            why: "Raccoon hat zwei c und zwei o." },
+  { de: "Kannst du das buchstabieren?",  en: "can you spell this", why: "Spell hat am Ende zwei l." },
+  { de: "Woher kommst du?",              en: "where are you from", why: "Where hat ein h nach dem w, wie what." },
+];
+/* ===================== Ende der Wörterliste ===================== */
+</script>
+
+<style>
+  /* Layout: one centred play card on a bright sky field; huge hyperlegible letters for video calls. */
+  :root {
+    --bg: #dff0ff;
+    --bg-dot: #c6e3ff;
+    --card: #ffffff;
+    --ink: #13213d;
+    --ink-soft: #4a5a7a;
+    --accent: #ff6b1a;       /* orange: main buttons */
+    --accent-ink: #ffffff;
+    --accent-press: #e0530a;
+    --good: #12a150;         /* green: right */
+    --good-soft: #d9f7e5;
+    --try: #7a4dff;          /* purple: "Fast!" / try again (never red) */
+    --try-soft: #ece5ff;
+    --mark: #ffe14d;         /* highlighter for tricky letters */
+    --mark-ink: #13213d;
+    --line: #c9d8ee;
+    --font-display: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
+    --font-word: "Atkinson Hyperlegible", Verdana, system-ui, sans-serif;
+    --radius: 22px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0e1a33; --bg-dot: #16264a; --card: #1a2b50; --ink: #f2f6ff; --ink-soft: #b3c2e0;
+      --accent: #ff8a3d; --accent-ink: #1a0d00; --accent-press: #ffa266;
+      --good: #3ddc84; --good-soft: #143b2a; --try: #a98bff; --try-soft: #2c2557;
+      --mark: #ffe14d; --mark-ink: #13213d; --line: #2e4372; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1a33; --bg-dot: #16264a; --card: #1a2b50; --ink: #f2f6ff; --ink-soft: #b3c2e0;
+    --accent: #ff8a3d; --accent-ink: #1a0d00; --accent-press: #ffa266;
+    --good: #3ddc84; --good-soft: #143b2a; --try: #a98bff; --try-soft: #2c2557;
+    --mark: #ffe14d; --mark-ink: #13213d; --line: #2e4372; color-scheme: dark;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { min-height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    background-image: radial-gradient(var(--bg-dot) 2px, transparent 2px);
+    background-size: 28px 28px;
+    color: var(--ink);
+    font-family: var(--font-display);
+    font-size: 20px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 16px 32px;
+  }
+  main { max-width: 680px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+  /* Top bar: round progress + streak */
+  .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .dots { display: flex; gap: 10px; }
+  .dot {
+    width: 30px; height: 30px; border-radius: 50%;
+    border: 3px solid var(--line); background: var(--card);
+    display: grid; place-items: center; font-size: 16px; line-height: 1;
+  }
+  .dot.now { border-color: var(--accent); transform: scale(1.15); }
+  .dot.star { border-color: var(--good); background: var(--good-soft); }
+  .dot.done { border-color: var(--try); background: var(--try-soft); }
+  .streak { font-weight: 700; font-size: 22px; color: var(--ink); background: var(--card); border-radius: 999px; padding: 6px 16px; border: 3px solid var(--line); font-variant-numeric: tabular-nums; }
+
+  .card {
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 3px solid var(--line);
+    box-shadow: 0 6px 0 var(--line);
+    padding: 28px 22px;
+    display: flex; flex-direction: column; align-items: center; gap: 20px;
+    text-align: center;
+  }
+  .hello { margin: 0; font-size: 22px; color: var(--ink-soft); font-weight: 500; }
+  .label { margin: 0; font-size: 22px; font-weight: 600; color: var(--ink-soft); }
+  .hint {
+    margin: 0; font-weight: 700; line-height: 1.1;
+    font-size: clamp(40px, 11vw, 72px);
+    text-wrap: balance; overflow-wrap: anywhere;
+  }
+
+  /* Buttons */
+  button {
+    font: inherit; cursor: pointer; border: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .btn {
+    min-height: 64px; padding: 12px 32px; border-radius: 999px;
+    font-size: 26px; font-weight: 700;
+    background: var(--accent); color: var(--accent-ink);
+    box-shadow: 0 6px 0 var(--accent-press);
+    transition: transform .08s ease, box-shadow .08s ease, filter .15s ease;
+  }
+  .btn:hover { filter: brightness(1.08); transform: translateY(-2px); box-shadow: 0 8px 0 var(--accent-press); }
+  .btn:active { transform: translateY(5px); box-shadow: 0 1px 0 var(--accent-press); }
+  .btn.green { background: var(--good); box-shadow: 0 6px 0 color-mix(in srgb, var(--good) 70%, #000); color: #fff; }
+  .btn.green:active { box-shadow: 0 1px 0 color-mix(in srgb, var(--good) 70%, #000); }
+  .btn-ghost {
+    min-height: 56px; padding: 8px 22px; border-radius: 999px;
+    font-size: 22px; font-weight: 600;
+    background: var(--card); color: var(--ink); border: 3px solid var(--line);
+    transition: transform .08s ease, border-color .15s ease, background .15s ease;
+  }
+  .btn-ghost:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .btn-ghost:active { transform: translateY(2px) scale(.97); background: var(--bg); }
+  button:focus-visible, input:focus-visible { outline: 4px solid var(--try); outline-offset: 3px; }
+
+  /* Answer box */
+  form { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 18px; }
+  .answer {
+    width: 100%;
+    font-family: var(--font-word); font-weight: 700;
+    font-size: clamp(30px, 8vw, 46px);
+    text-align: center; letter-spacing: .04em;
+    padding: 14px 16px; border-radius: 16px;
+    border: 4px solid var(--line); background: var(--bg); color: var(--ink);
+  }
+  .answer:focus { border-color: var(--accent); outline: none; }
+
+  /* Feedback */
+  .msg { margin: 0; font-size: clamp(34px, 9vw, 52px); font-weight: 700; line-height: 1.1; }
+  .msg.good { color: var(--good); }
+  .msg.try { color: var(--try); }
+  .why {
+    margin: 0; font-size: 24px; line-height: 1.4; font-weight: 500;
+    background: var(--good-soft); color: var(--ink); border-radius: 16px; padding: 14px 18px;
+    max-width: 30ch;
+  }
+  .compare { width: 100%; display: grid; gap: 10px; }
+  .row { display: grid; gap: 4px; padding: 12px; border-radius: 16px; }
+  .row.you { background: var(--try-soft); }
+  .row.right { background: var(--good-soft); }
+  .row .who { font-size: 18px; font-weight: 600; color: var(--ink-soft); }
+  .word {
+    font-family: var(--font-word); font-weight: 700;
+    font-size: clamp(32px, 9vw, 54px); letter-spacing: .06em; line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+  .word .bad { text-decoration: line-through; text-decoration-thickness: 3px; color: var(--try); }
+  .word .tricky { background: var(--mark); color: var(--mark-ink); border-radius: 6px; padding: 0 2px; }
+  .timer { width: 100%; height: 12px; border-radius: 999px; background: var(--line); overflow: hidden; }
+  .timer > i { display: block; height: 100%; width: 100%; background: var(--good); transform-origin: left; }
+  .timer.run > i { animation: shrink 3s linear forwards; }
+  @keyframes shrink { to { transform: scaleX(0); } }
+  .hidden-word { font-family: var(--font-word); font-size: 44px; letter-spacing: .3em; color: var(--ink-soft); }
+
+  /* End of round */
+  .stars { font-size: clamp(40px, 12vw, 64px); letter-spacing: 6px; line-height: 1; }
+  .score { margin: 0; font-size: 26px; font-weight: 600; }
+  .pop { animation: pop .35s ease-out; }
+  @keyframes pop { from { transform: scale(.85); opacity: .4; } to { transform: scale(1); opacity: 1; } }
+
+  /* Confetti */
+  .confetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 20; }
+  .confetti span { position: absolute; top: -60px; font-size: 34px; animation: fall linear forwards; }
+  @keyframes fall { to { transform: translateY(115vh) rotate(540deg); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pop, .confetti span { animation: none; }
+    .confetti { display: none; }
+    .timer.run > i { animation-duration: 3s; }
+    .btn, .btn-ghost { transition: none; }
+  }
+  @media (max-width: 420px) {
+    .card { padding: 22px 14px; }
+    .dot { width: 26px; height: 26px; font-size: 14px; }
+    .btn { width: 100%; }
+  }
+</style>
+
+<main>
+  <div class="bar">
+    <div class="dots" id="dots" aria-label="Fortschritt"></div>
+    <div class="streak" id="streak" title="Richtig beim ersten Mal, hintereinander">🔥 0</div>
+  </div>
+  <section class="card" id="card" aria-live="polite"></section>
+</main>
+<div class="confetti" id="confetti" aria-hidden="true"></div>
+
+<script>
+(function () {
+  const ROUND_SIZE = 5;
+  const SHOW_MS = 3000;           // how long the right word stays visible
+  const card = document.getElementById("card");
+  const dotsEl = document.getElementById("dots");
+  const streakEl = document.getElementById("streak");
+
+  const missed = new Set();       // words he got wrong (only for this visit)
+  const seen = new Map();         // how often each word was asked
+  let streak = 0;
+  let round = [], idx = 0, results = [], firstTry = true, hideTimer = null, roundNo = 0;
+
+  // ---------- helpers ----------
+  const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const clean = s => s.toLowerCase().replace(/[’`´]/g, "'").replace(/[?!.,]/g, "").replace(/\s+/g, " ").trim();
+  const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  function speak(text) {
+    try {
+      if (!("speechSynthesis" in window)) return;
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "en-GB"; u.rate = 0.8;
+      const v = speechSynthesis.getVoices().find(v => /^en(-|_)GB/i.test(v.lang)) ||
+                speechSynthesis.getVoices().find(v => /^en/i.test(v.lang));
+      if (v) u.voice = v;
+      speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+
+  // Build a round: an easy new word first, then old mistakes mixed into places 2–5.
+  function buildRound() {
+    const byLeastSeen = list => shuffle(list).sort((a, b) => (seen.get(a.en) || 0) - (seen.get(b.en) || 0));
+    const missedWords = WORDS.filter(w => missed.has(w.en));
+    const review = shuffle(missedWords).slice(0, Math.min(3, ROUND_SIZE - 1));
+    let fresh = byLeastSeen(WORDS.filter(w => !missed.has(w.en)));
+    if (fresh.length === 0) fresh = review.splice(0, 1);          // everything was missed: start anyway
+    const need = ROUND_SIZE - review.length;
+    const newOnes = fresh.slice(0, need);
+    while (newOnes.length < need && missedWords.length) {           // tiny word list: fill up
+      const extra = missedWords.find(w => !review.includes(w) && !newOnes.includes(w));
+      if (!extra) break; newOnes.push(extra);
+    }
+    const first = newOnes.shift();
+    return [first].concat(shuffle(newOnes.concat(review))).filter(Boolean);
+  }
+
+  // Which letters of the right word did he miss? (longest common subsequence)
+  function diff(typed, right) {
+    const a = typed.toLowerCase(), b = right.toLowerCase();
+    const n = a.length, m = b.length;
+    const L = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+    for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--)
+      L[i][j] = a[i] === b[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+    const okA = new Array(n).fill(false), okB = new Array(m).fill(false);
+    let i = 0, j = 0;
+    while (i < n && j < m) {
+      if (a[i] === b[j]) { okA[i] = okB[j] = true; i++; j++; }
+      else if (L[i + 1][j] >= L[i][j + 1]) i++; else j++;
+    }
+    const paint = (s, ok, cls) => [...s].map((c, k) => c === " " ? " " : ok[k] ? esc(c) : `<span class="${cls}">${esc(c)}</span>`).join("");
+    return { you: paint(typed, okA, "bad"), right: paint(right, okB, "tricky") };
+  }
+
+  function drawDots() {
+    dotsEl.innerHTML = round.map((w, k) => {
+      const r = results[k];
+      const cls = r === "star" ? "star" : r === "done" ? "done" : k === idx ? "now" : "";
+      const sym = r === "star" ? "⭐" : r === "done" ? "✓" : "";
+      return `<span class="dot ${cls}">${sym}</span>`;
+    }).join("");
+    streakEl.textContent = "🔥 " + streak;
+  }
+
+  function confetti(count) {
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const box = document.getElementById("confetti");
+    const bits = ["⭐", "🎉", "✨", "🌟", "🎈"];
+    for (let k = 0; k < count; k++) {
+      const s = document.createElement("span");
+      s.textContent = bits[k % bits.length];
+      s.style.left = Math.random() * 100 + "vw";
+      s.style.animationDuration = 1.8 + Math.random() * 1.6 + "s";
+      s.style.animationDelay = Math.random() * 0.6 + "s";
+      box.appendChild(s);
+      setTimeout(() => s.remove(), 4200);
+    }
+  }
+
+  // ---------- screens ----------
+  function startRound() {
+    roundNo++;
+    round = buildRound(); idx = 0; results = [];
+    askWord();
+  }
+
+  function askWord(again) {
+    clearTimeout(hideTimer);
+    const w = round[idx];
+    if (!again) { firstTry = true; seen.set(w.en, (seen.get(w.en) || 0) + 1); }
+    drawDots();
+    card.innerHTML = `
+      ${!again && idx === 0 && roundNo === 1 ? `<p class="hello">Hallo Frederik! Schreib das Wort auf Englisch.</p>` : ""}
+      <p class="label">${again ? "Nochmal! Schreib es aus dem Kopf." : `Wort ${idx + 1} von ${round.length}`}</p>
+      <p class="hint pop">${esc(w.de)}</p>
+      <button type="button" class="btn-ghost" id="say">🔊 Anhören</button>
+      <form id="f" autocomplete="off">
+        <input class="answer" id="answer" type="text" inputmode="text" enterkeyhint="done"
+          autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+          aria-label="Englisches Wort" placeholder="Hier schreiben">
+        <button class="btn" type="submit">Fertig ✓</button>
+      </form>`;
+    const input = document.getElementById("answer");
+    document.getElementById("say").onclick = () => speak(w.en);
+    document.getElementById("f").onsubmit = e => {
+      e.preventDefault();
+      const typed = input.value.trim();
+      if (!typed) { input.focus(); return; }
+      check(typed);
+    };
+    input.focus({ preventScroll: true });
+  }
+
+  function check(typed) {
+    const w = round[idx];
+    if (clean(typed) === clean(w.en)) return gotIt();
+    if (firstTry) { missed.add(w.en); streak = 0; drawDots(); }
+    firstTry = false;
+    showCompare(typed);
+  }
+
+  function showCompare(typed) {
+    const w = round[idx];
+    const d = diff(typed.replace(/\s+/g, " "), w.en);
+    card.innerHTML = `
+      <p class="msg try pop">Fast!</p>
+      <div class="compare">
+        <div class="row you"><span class="who">Du hast geschrieben:</span><span class="word">${d.you}</span></div>
+        <div class="row right" id="rightRow"><span class="who">So schreibt man es:</span><span class="word" id="rightWord">${d.right}</span></div>
+      </div>
+      <p class="label">Schau genau hin! Merk dir das Wort.</p>
+      <div class="timer" id="timer"><i></i></div>`;
+    requestAnimationFrame(() => document.getElementById("timer").classList.add("run"));
+    hideTimer = setTimeout(() => askWord(true), SHOW_MS);
+  }
+
+  function gotIt() {
+    const w = round[idx];
+    if (firstTry) {
+      results[idx] = "star"; streak++;
+      missed.delete(w.en);
+      drawDots();
+      card.innerHTML = `
+        <p class="msg good pop">${pick(["Super!", "Richtig!", "Klasse!", "Toll!"])} ⭐</p>
+        <p class="word">${esc(w.en)}</p>
+        <button class="btn green" type="button" id="next">Weiter →</button>`;
+      confetti(8);
+    } else {
+      results[idx] = "done";
+      drawDots();
+      card.innerHTML = `
+        <p class="msg good pop">Jetzt stimmt's! 🎉</p>
+        <p class="word">${esc(w.en)}</p>
+        <p class="why">${esc(w.why)}</p>
+        <button class="btn green" type="button" id="next">Weiter →</button>`;
+    }
+    const next = document.getElementById("next");
+    next.onclick = nextWord;
+    next.focus({ preventScroll: true });
+  }
+
+  function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+
+  function nextWord() {
+    idx++;
+    if (idx < round.length) askWord(); else endRound();
+  }
+
+  function endRound() {
+    idx = round.length; drawDots();
+    const stars = results.filter(r => r === "star").length;
+    const words = round.length;
+    card.innerHTML = `
+      <p class="msg good pop">Runde geschafft! 🎉</p>
+      <div class="stars" aria-label="${stars} Sterne">${"⭐".repeat(stars)}${"☆".repeat(words - stars)}</div>
+      <p class="score">${stars} von ${words} Wörtern beim ersten Mal richtig.</p>
+      <p class="label">${stars === words ? "Alles richtig. Wow!" : "Alle Wörter am Ende richtig. Gut gemacht!"}</p>
+      <button class="btn" type="button" id="again">Neue Runde ▶</button>`;
+    confetti(30);
+    document.getElementById("again").onclick = startRound;
+  }
+
+  startRound();
+})();
+</script>
