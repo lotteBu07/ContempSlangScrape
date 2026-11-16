@@ -318,6 +318,15 @@ const WORDS = [
   }
   [hidden] { display: none !important; }
   .btn.check { width: min(100%, 360px); font-size: 40px; line-height: 1; }
+  .btn-ghost.say { font-size: 30px; line-height: 1; min-width: 88px; padding: 8px 20px; }
+  /* answer box gets the same language tab as the word box */
+  .answerwrap { position: relative; width: 100%; margin-top: 6px; }
+  .answerwrap .tag {
+    position: absolute; top: -14px; left: 50%; transform: translateX(-50%); z-index: 1;
+    font-size: 15px; font-weight: 600; letter-spacing: .04em; white-space: nowrap;
+    background: var(--card); color: var(--ink-soft); border: 2px solid var(--line); border-radius: 999px; padding: 1px 12px;
+  }
+  .answerwrap .answer { padding-top: 20px; }
   /* ---------- teacher page: plain and easy ---------- */
   .teacher { max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; font-size: 18px; }
   .teacher h1 { margin: 8px 0 0; font-size: 32px; }
@@ -732,11 +741,14 @@ const WORDS = [
         <span class="tag">${it.dir === "en" ? "Deutsch" : "Englisch"}</span>
         <p class="hint pop">${esc(shown(it))}</p>
       </div>
-      <button type="button" class="btn-ghost" id="say">🔊 Anhören</button>
+      <button type="button" class="btn-ghost say" id="say" aria-label="Anhören" title="Anhören">🔊</button>
       <form id="f" autocomplete="off">
-        <input class="answer" id="answer" type="text" inputmode="text" enterkeyhint="done"
-          autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-          aria-label="${it.dir === "en" ? "Englisches Wort" : "Deutsches Wort"}" placeholder="${it.dir === "en" ? "Auf Englisch" : "Auf Deutsch"}">
+        <div class="answerwrap">
+          <span class="tag">${it.dir === "en" ? "Englisch" : "Deutsch"}</span>
+          <input class="answer" id="answer" type="text" inputmode="text" enterkeyhint="done"
+            autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+            aria-label="${it.dir === "en" ? "Englisches Wort" : "Deutsches Wort"}" placeholder="Tippe …">
+        </div>
         <button class="btn check" type="submit" aria-label="Fertig">✓</button>
       </form>`;
     const input = document.getElementById("answer");
