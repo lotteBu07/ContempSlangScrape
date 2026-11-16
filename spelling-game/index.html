@@ -166,7 +166,7 @@ const WORDS = [
   .hint {
     margin: 0; font-weight: 700; line-height: 1.1;
     font-size: clamp(40px, 11vw, 72px);
-    text-wrap: balance; overflow-wrap: anywhere;
+    text-wrap: balance; overflow-wrap: normal; word-break: normal; hyphens: manual;
   }
 
   /* Buttons */
@@ -231,7 +231,8 @@ const WORDS = [
   .pair .from { background: var(--bg); }
   .pair .to { background: var(--good-soft); }
   .pair .ptag { font-size: 15px; font-weight: 600; letter-spacing: .04em; color: var(--ink-soft); }
-  .pair .fromword { font-size: clamp(26px, 7vw, 38px); font-weight: 600; overflow-wrap: anywhere; }
+  .pair .fromword { font-size: clamp(26px, 7vw, 38px); font-weight: 600; }
+  .pair .fromword, .pair .word { display: block; width: 100%; text-align: center; text-wrap: balance; }
   .pair .arrow { font-size: 26px; line-height: 1; color: var(--ink-soft); }
   /* spelling tip: a yellow note with a dashed edge, so it never looks like one of the word boxes */
   .why {
@@ -257,7 +258,7 @@ const WORDS = [
   .word {
     font-family: var(--font-word); font-weight: 700;
     font-size: clamp(32px, 9vw, 54px); letter-spacing: .06em; line-height: 1.25;
-    overflow-wrap: anywhere;
+    overflow-wrap: normal; word-break: normal; hyphens: manual; max-width: 100%;
   }
   .word .bad { text-decoration: line-through; text-decoration-thickness: 3px; color: var(--try); }
   .word .tricky { background: var(--mark); color: var(--mark-ink); border-radius: 6px; padding: 0 2px; }
@@ -1014,6 +1015,39 @@ const WORDS = [
     drawPlant();
     startRound();
   }
+
+  // ================= Text fitting =================
+  // Rule: never break inside a word. If a word does not fit its box,
+  // make the text a bit smaller until it fits; lines break only between words.
+  const MIN_FONT = 16;
+  function fitText(el) {
+    el.style.fontSize = "";
+    let size = parseFloat(getComputedStyle(el).fontSize), guard = 0;
+    while (el.scrollWidth > el.clientWidth + 1 && size > MIN_FONT && guard++ < 80) {
+      size -= 1; el.style.fontSize = size + "px";
+    }
+  }
+  const measureCtx = document.createElement("canvas").getContext("2d");
+  function fitInput(input) {
+    input.style.fontSize = "";
+    const cs = getComputedStyle(input);
+    let size = parseFloat(cs.fontSize);
+    const text = input.value || input.placeholder;
+    const spacing = parseFloat(cs.letterSpacing) / parseFloat(cs.fontSize) || 0;   // em
+    const room = input.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 4;
+    const width = sz => { measureCtx.font = `${cs.fontWeight} ${sz}px ${cs.fontFamily}`; return measureCtx.measureText(text).width + spacing * sz * text.length; };
+    while (width(size) > room && size > MIN_FONT) size -= 1;
+    input.style.fontSize = size + "px";
+  }
+  function fitAll() {
+    card.querySelectorAll(".hint, .word, .fromword").forEach(fitText);
+    const input = document.getElementById("answer");
+    if (input) fitInput(input);
+  }
+  new MutationObserver(() => requestAnimationFrame(fitAll)).observe(card, { childList: true });
+  card.addEventListener("input", e => { if (e.target.id === "answer") fitInput(e.target); });
+  window.addEventListener("resize", () => requestAnimationFrame(fitAll));
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitAll);
 
   document.addEventListener("touchstart", () => {}, { passive: true });   // makes buttons react on tap (iPad, iPhone)
   window.addEventListener("hashchange", boot);
