@@ -286,13 +286,11 @@ const WORDS = [
   @keyframes pop { from { transform: scale(.85); opacity: .4; } to { transform: scale(1); opacity: 1; } }
 
   /* Confetti */
-  .confetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 20; }
-  .confetti span { position: absolute; top: -60px; font-size: 34px; animation: fall linear forwards; }
-  @keyframes fall { to { transform: translateY(115vh) rotate(540deg); } }
+  .garden .drop { position: absolute; top: 6%; margin-left: -11px; font-size: 22px; pointer-events: none; opacity: 0; animation: drip .9s ease-in forwards; }
+  @keyframes drip { 0% { top: 6%; opacity: 0; } 20% { opacity: 1; } 85% { opacity: 1; } 100% { top: 62%; opacity: 0; } }
 
   @media (prefers-reduced-motion: reduce) {
-    .pop, .confetti span { animation: none; }
-    .confetti { display: none; }
+    .pop { animation: none; }
     .timer.run > i { animation-duration: 3s; }
     .btn, .btn-ghost { transition: none; }
   }
@@ -381,7 +379,6 @@ const WORDS = [
   <div class="garden" id="plant" role="img" aria-label="Dein Kürbis" title="Dein Kürbis wächst bei jedem Wort."></div>
   <section class="card" id="card" aria-live="polite"></section>
 </main>
-<div class="confetti" id="confetti" aria-hidden="true"></div>
 
 <!-- Teacher page: open the game address with #lehrer at the end. Frederik never sees it. -->
 <section class="teacher" id="teacher" hidden>
@@ -692,6 +689,11 @@ const WORDS = [
     let plants = "";
     for (let i = rowStart; i < finished.length; i++) plants += place(i, plantModule(40, G, 10, finished[i].health), "done-plant");
     if (growing) plants += place(finished.length, plantModule(40, G, Math.min(stage, 10), health), "grower");
+    // drops fall over the plant: around the young stem, later over the whole plant with its pumpkin
+    const shownStage = growing ? Math.min(stage, 10) : 10;
+    const dropX = (lastIdx - rowStart) * W / slots + (shownStage < 5 ? 40 - 22 : 40 - 30) * k;
+    const dropW = (shownStage < 5 ? 44 : 135) * k;
+    plantSpan = [dropX / W * 100, dropW / W * 100];
     let pebbles = "";
     for (let x = 18; x < W; x += 56) pebbles += `<circle cx="${x}" cy="${G + 6 + (x % 5)}" r="1.4" fill="#4a2e18"/><circle cx="${x + 27}" cy="${G + 4 + (x % 3)}" r="1.1" fill="#9a6a44"/>`;
 
@@ -725,18 +727,18 @@ const WORDS = [
     }).join("");
   }
 
-  function confetti(count) {
+  // Watering: a few water drops fall on the growing plant for a moment (no stars).
+  let plantSpan = [0, 30];        // where the current plant is in the garden: [left %, width %]
+  function water() {
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const box = document.getElementById("confetti");
-    const bits = ["⭐", "🎉", "✨", "🌟", "🎈"];
-    for (let k = 0; k < count; k++) {
-      const s = document.createElement("span");
-      s.textContent = bits[k % bits.length];
-      s.style.left = Math.random() * 100 + "vw";
-      s.style.animationDuration = 1.8 + Math.random() * 1.6 + "s";
-      s.style.animationDelay = Math.random() * 0.6 + "s";
-      box.appendChild(s);
-      setTimeout(() => s.remove(), 4200);
+    const [left, width] = plantSpan;
+    for (let k = 0; k < 7; k++) {
+      const d = document.createElement("span");
+      d.className = "drop"; d.textContent = "💧"; d.setAttribute("aria-hidden", "true");
+      d.style.left = (left + width * Math.random()) + "%";
+      d.style.animationDelay = (k * 0.12 + Math.random() * 0.1).toFixed(2) + "s";
+      plantEl.appendChild(d);
+      setTimeout(() => d.remove(), 1800);
     }
   }
 
@@ -830,9 +832,9 @@ const WORDS = [
         <p class="badge">${pick(["Super!", "Richtig!", "Klasse!", "Toll!"])} ⭐</p>
         ${pair}
         <button class="btn green" type="button" id="next">Weiter →</button>`;
-      confetti(8);
+      water();
     } else {
-      results[idx] = "done"; stage++; drawPlant(true);
+      results[idx] = "done"; stage++; drawPlant(true); water();
       drawDots();
       card.innerHTML = `
         <p class="badge">Jetzt richtig! 🎉</p>
@@ -879,7 +881,6 @@ const WORDS = [
       <p class="score">${stars} von ${words} sofort richtig.</p>
       <p class="label">${stars === words ? "Alles richtig. Wow!" : "Gut gemacht!"}</p>
       <button class="btn" type="button" id="again">Neue Runde ▶</button>`;
-    confetti(30);
     document.getElementById("again").onclick = startRound;
   }
 
