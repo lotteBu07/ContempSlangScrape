@@ -86,7 +86,7 @@ const WORDS = [
   }
   main { max-width: 680px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
 
-  /* Top bar: round progress + streak */
+  /* Top bar: round progress + plant */
   .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   .dots { display: flex; gap: 8px; flex-wrap: wrap; }
   .dot.gap { margin-left: 14px; }
@@ -99,7 +99,12 @@ const WORDS = [
   .dot.now { border-color: var(--accent); transform: scale(1.15); }
   .dot.star { border-color: var(--good); background: var(--good-soft); }
   .dot.done { border-color: var(--try); background: var(--try-soft); }
-  .streak { font-weight: 700; font-size: 22px; color: var(--ink); background: var(--card); border-radius: 999px; padding: 6px 16px; border: 3px solid var(--line); font-variant-numeric: tabular-nums; }
+  .plant { width: 76px; height: 76px; background: var(--card); border: 3px solid var(--line); border-radius: 20px; display: grid; place-items: center; }
+  .plant svg { width: 68px; height: 68px; overflow: visible; }
+  .plant .sprout { transform-origin: 40px 66px; }
+  .plant.grow .sprout { animation: grow .6s ease-out; }
+  @keyframes grow { 0% { transform: scale(.9); } 60% { transform: scale(1.08); } 100% { transform: scale(1); } }
+  @media (prefers-reduced-motion: reduce) { .plant.grow .sprout { animation: none; } }
 
   .card {
     background: var(--card);
@@ -215,7 +220,7 @@ const WORDS = [
 <main>
   <div class="bar">
     <div class="dots" id="dots" aria-label="Fortschritt"></div>
-    <div class="streak" id="streak" title="Richtig beim ersten Mal, hintereinander">🔥 0</div>
+    <div class="plant" id="plant" role="img" aria-label="Deine Pflanze" title="Deine Pflanze wächst bei jedem richtigen Wort."></div>
   </div>
   <section class="card" id="card" aria-live="polite"></section>
 </main>
@@ -227,11 +232,15 @@ const WORDS = [
   const SHOW_MS = 3000;           // how long the right word stays visible
   const card = document.getElementById("card");
   const dotsEl = document.getElementById("dots");
-  const streakEl = document.getElementById("streak");
+  const plantEl = document.getElementById("plant");
 
   const missed = new Set();       // words he got wrong (only for this visit)
   const seen = new Map();         // how often each word was asked
-  let streak = 0;
+  // The plant: grows with every word right on the first try.
+  // A wrong first try makes it a bit yellow or brown. It never dies:
+  // the next right word makes it greener again.
+  let growth = 0, health = 0;     // health: 0 = green … 3 = yellow-brown (never worse)
+  const MAX_GROW = 14;            // after this it stops getting taller and gets a flower
   let round = [], idx = 0, results = [], firstTry = true, hideTimer = null, roundNo = 0;
 
   // ---------- helpers ----------
@@ -351,6 +360,44 @@ const WORDS = [
     return { you: paint(typed, okA, "bad"), right: paint(right, okB, "tricky") };
   }
 
+  function drawPlant(bump) {
+    const LEAF = ["#3fbf5a", "#9cc23c", "#d1b53a", "#b58a45"];
+    const STEM = ["#2e8f43", "#73973a", "#a58c36", "#8a6a36"];
+    const g = Math.min(growth, MAX_GROW);
+    const base = 64, h = 8 + g * 3.8, top = base - h;
+    const lean = health * 3;                                  // a thirsty plant leans a little
+    const droop = 30 - health * 14;                           // leaf angle: up when healthy, down when thirsty
+    const leaf = (x, y, side, size) =>
+      `<ellipse cx="${x + side * size * 0.9}" cy="${y}" rx="${size}" ry="${size * 0.45}" fill="${LEAF[health]}"
+        transform="rotate(${-side * droop} ${x} ${y})"/>`;
+    let leaves = "";
+    const n = Math.min(g, 10);
+    for (let k = 0; k < n; k++) {
+      const t = (k + 1) / (n + 1);                            // 0 at the soil, 1 at the top
+      const y = base - t * h;
+      const x = 40 + lean * t;
+      leaves += leaf(x, y, k % 2 ? 1 : -1, 5 + Math.min(k, 5) * 0.5);
+    }
+    const tx = 40 + lean;
+    leaves += leaf(tx, top, -1, 4.5) + leaf(tx, top, 1, 4.5);  // the two little top leaves
+    const flower = growth >= MAX_GROW
+      ? `<g transform="translate(${tx} ${top - 4})">${[0, 72, 144, 216, 288].map(a =>
+          `<circle cx="${Math.cos(a * Math.PI / 180) * 4}" cy="${Math.sin(a * Math.PI / 180) * 4}" r="3.2" fill="#ff8fb3"/>`).join("")}
+          <circle r="2.6" fill="#ffd23f"/></g>` : "";
+    plantEl.innerHTML = `
+      <svg viewBox="0 0 80 80" aria-hidden="true">
+        <g class="sprout">
+          <path d="M40 ${base} Q ${40 + lean * 0.2} ${base - h / 2} ${tx} ${top}" stroke="${STEM[health]}" stroke-width="3" fill="none" stroke-linecap="round"/>
+          ${leaves}${flower}
+        </g>
+        <path d="M6 76 Q 14 62 40 61 Q 66 62 74 76 Z" fill="#8a5a33"/>
+        <circle cx="24" cy="70" r="1.6" fill="#6b4426"/><circle cx="46" cy="67" r="1.4" fill="#6b4426"/>
+        <circle cx="58" cy="72" r="1.6" fill="#6b4426"/><circle cx="34" cy="73" r="1.2" fill="#a8744a"/>
+      </svg>`;
+    plantEl.setAttribute("aria-label", health === 0 ? "Deine Pflanze ist grün und gesund." : "Deine Pflanze braucht ein richtiges Wort.");
+    if (bump) { plantEl.classList.remove("grow"); void plantEl.offsetWidth; plantEl.classList.add("grow"); }
+  }
+
   function drawDots() {
     dotsEl.innerHTML = round.map((it, k) => {
       const r = results[k];
@@ -359,7 +406,6 @@ const WORDS = [
       const gap = k > 0 && round[k - 1].dir !== it.dir ? " gap" : "";
       return `<span class="dot ${cls}${gap}">${sym}</span>`;
     }).join("");
-    streakEl.textContent = "🔥 " + streak;
   }
 
   function confetti(count) {
@@ -420,7 +466,7 @@ const WORDS = [
   function check(typed) {
     const it = round[idx];
     if (answers(it).some(a => norm(a) === norm(typed))) return gotIt();
-    if (firstTry) { missed.add(key(it.w, it.dir)); streak = 0; drawDots(); }
+    if (firstTry) { missed.add(key(it.w, it.dir)); health = Math.min(3, health + 1); drawPlant(); }
     firstTry = false;
     showCompare(typed);
   }
@@ -447,7 +493,7 @@ const WORDS = [
     const it = round[idx], w = it.w;
     const solution = it.dir === "en" ? w.en : w.de;
     if (firstTry) {
-      results[idx] = "star"; streak++;
+      results[idx] = "star"; growth++; health = Math.max(0, health - 1); drawPlant(true);
       missed.delete(key(w, it.dir));
       drawDots();
       card.innerHTML = `
@@ -504,6 +550,7 @@ const WORDS = [
     document.getElementById("again").onclick = startRound;
   }
 
+  drawPlant();
   startRound();
 })();
 </script>
