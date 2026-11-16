@@ -5,7 +5,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&display=swap">
 
-<script>
+<script id="words">
 /* =====================================================================
    WÖRTERLISTE – HIER BEARBEITEN
    ---------------------------------------------------------------------
@@ -55,7 +55,7 @@ const WORDS = [
 /* ===================== Ende der Wörterliste ===================== */
 </script>
 
-<style>
+<style id="css">
   /* Layout: one centred play card on a bright sky field; huge hyperlegible letters for video calls. */
   :root {
     --bg: #dff0ff;
@@ -398,6 +398,11 @@ const WORDS = [
   <p class="t-count" id="tCount"></p>
   <div id="rows" class="t-rows"></div>
   <button type="button" class="btn-ghost" id="addRow">+ Wort hinzufügen</button>
+  <div class="t-make" id="saveBox" hidden>
+    <button type="button" class="btn" id="saveBtn">Speichern</button>
+    <p class="t-help">Speichert die Wörter im Spiel selbst. Frederik behält seinen Link und bekommt beim nächsten Öffnen die neuen Wörter.</p>
+    <p class="t-msg" id="saveMsg" role="status"></p>
+  </div>
   <div class="t-make">
     <button type="button" class="btn" id="makeLink">Link erstellen</button>
     <p class="t-msg" id="makeMsg" role="status"></p>
@@ -412,7 +417,7 @@ const WORDS = [
   </div>
 </section>
 
-<script>
+<script id="app">
 (function () {
   const ROUND_SIZE = 5;
   const SHOW_MS = 3000;           // how long the right word stays visible
@@ -961,8 +966,14 @@ const WORDS = [
     document.getElementById("tCount").textContent = rows.length + (rows.length === 1 ? " Wort" : " Wörter");
   }
   function fillRows(list) { rowsEl.innerHTML = list.map(rowHTML).join(""); renumber(); }
-  function saveDraft() { try { localStorage.setItem(DRAFT_KEY, JSON.stringify(readRows())); } catch (e) {} }
-  function loadDraft() { try { const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null"); return Array.isArray(d) && d.length ? d : null; } catch (e) { return null; } }
+  const SAVED_KEY = JSON.stringify(WORDS);                 // the list saved in the game right now
+  function saveDraft() { try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ base: SAVED_KEY, rows: readRows() })); } catch (e) {} }
+  function loadDraft() {
+    try {
+      const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null");
+      return d && d.base === SAVED_KEY && Array.isArray(d.rows) && d.rows.length ? d.rows : null;   // stale draft: show the saved words
+    } catch (e) { return null; }
+  }
   function setMsg(id, text, kind) { const el = document.getElementById(id); el.textContent = text; el.className = "t-msg " + (kind || ""); }
 
   function setupTeacher() {
@@ -988,6 +999,8 @@ const WORDS = [
       } catch (e) { setMsg("oldMsg", "Dieser Link ist kaputt. Bitte den ganzen Link einfügen.", "warn"); }
     };
     document.getElementById("makeLink").onclick = makeLink;
+    document.getElementById("saveBtn").onclick = saveWords;
+    if (artifactApi) document.getElementById("saveBox").hidden = false;
     document.getElementById("copyLink").onclick = () => {
       const ta = document.getElementById("linkText");
       const done = () => setMsg("makeMsg", "Kopiert. Jetzt an Frederik schicken.", "ok");
@@ -996,19 +1009,26 @@ const WORDS = [
     };
   }
 
-  async function makeLink() {
+  // The filled-in words, or null (with a message in msgId) when something is missing.
+  function checkedList(msgId) {
     const rows = [...rowsEl.querySelectorAll(".t-row")];
     rows.forEach(r => r.classList.remove("bad"));
     const all = readRows();
     const missing = all.map((w, k) => (!w.de || !w.en) && (w.de || w.en || w.why || w.whyDe) ? k : -1).filter(k => k >= 0);
     if (missing.length) {
       missing.forEach(k => rows[k].classList.add("bad"));
-      setMsg("makeMsg", "Bei " + missing.map(k => "Wort " + (k + 1)).join(", ") + " fehlt Deutsch oder Englisch.", "warn");
+      setMsg(msgId, "Bei " + missing.map(k => "Wort " + (k + 1)).join(", ") + " fehlt Deutsch oder Englisch.", "warn");
       rows[missing[0]].scrollIntoView({ block: "center" });
-      return;
+      return null;
     }
     const list = all.filter(w => w.de && w.en);
-    if (list.length < 2) { setMsg("makeMsg", "Bitte mindestens 2 Wörter eintragen.", "warn"); return; }
+    if (list.length < 2) { setMsg(msgId, "Bitte mindestens 2 Wörter eintragen.", "warn"); return null; }
+    return list;
+  }
+
+  async function makeLink() {
+    const list = checkedList("makeMsg");
+    if (!list) return;
     const link = baseUrl() + "#" + await encodeList(list);
     const out = document.getElementById("linkOut");
     if (link.length > LINK_LIMIT) {
@@ -1021,6 +1041,61 @@ const WORDS = [
     document.getElementById("tryLink").href = link;
     out.hidden = false;
     setMsg("makeMsg", "Fertig: " + list.length + " Wörter im Link.", "ok");
+  }
+
+  // ================= Speichern: the game saves itself with the new words =================
+  // Only on claude.ai, only for someone allowed to edit this game. Frederik's link stays the same.
+  let artifactApi = null;
+  try { window.claude?.use?.("artifact").then(a => { artifactApi = a; if (a && teacherReady) document.getElementById("saveBox").hidden = false; }).catch(() => {}); } catch (e) {}
+  // The page as authored, captured before the game changes anything, to rebuild the saved version from.
+  const SRC = {
+    head: [
+      '<meta charset="utf-8">',
+      '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">',
+      '<title>' + document.title + '</title>',
+      '<meta name="claude:viewport-fit-sides" content="cover">',
+      '<link rel="preconnect" href="https://fonts.googleapis.com">',
+      '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&display=swap">',
+    ].join("\n"),
+    wordsHelp: document.getElementById("words").textContent.split("const WORDS")[0],
+    wordsEnd: document.getElementById("words").textContent.split(/\n\];\n/).pop(),
+    css: document.getElementById("css").textContent,
+    game: document.getElementById("game").outerHTML,
+    teacher: document.getElementById("teacher").outerHTML,
+    app: document.getElementById("app").textContent,
+  };
+  function buildPage(list) {
+    const q = v => JSON.stringify(v || "").replace(/</g, "\\u003c");
+    const words = "const WORDS = [\n" + list.map(w =>
+      `  { de: ${q(w.de)}, en: ${q(w.en)}, why: ${q(w.why)}, whyDe: ${q(w.whyDe)} },`).join("\n") + "\n];\n" + SRC.wordsEnd;
+    const content = SRC.head + "\n\n<script id=\"words\">" + SRC.wordsHelp + words + "</" + "script>\n\n" +
+      "<style id=\"css\">" + SRC.css + "</style>\n\n" + SRC.game + "\n\n" +
+      "<!-- Teacher page: open the game address with #lehrer at the end. Frederik never sees it. -->\n" + SRC.teacher + "\n\n" +
+      "<script id=\"app\">" + SRC.app + "</" + "script>\n";
+    return '<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover">' +
+      '<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}' +
+      'body{margin:0;font:14px system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>' +
+      '</head><body>' + content + '</body></html>';
+  }
+  async function saveWords() {
+    const list = checkedList("saveMsg");
+    if (!list || !artifactApi) return;
+    const btn = document.getElementById("saveBtn");
+    btn.disabled = true; setMsg("saveMsg", "Speichert …");
+    try {
+      await artifactApi.publish(buildPage(list));
+      try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+      setMsg("saveMsg", "Gespeichert. Frederiks Link spielt jetzt diese " + list.length + " Wörter.", "ok");   // the page reloads now
+    } catch (err) {
+      btn.disabled = false;
+      const code = err && err.code;
+      if (code === "conflict") setMsg("saveMsg", "Jemand hat gerade anders gespeichert. Die Seite lädt neu, bitte danach noch einmal speichern.", "warn");
+      else if (code === "not_writer" || code === "not_granted" || code === "consent_required" || code === "not_declared" || code === "capability_disabled") {
+        setMsg("saveMsg", "Speichern geht nur für die Person, der das Spiel gehört. Der Button „Link erstellen“ geht trotzdem.", "warn");
+        btn.hidden = true;
+      } else if (code === "rate_limited") setMsg("saveMsg", "Zu oft gespeichert. Bitte in einer Minute noch einmal.", "warn");
+      else setMsg("saveMsg", "Speichern hat nicht geklappt. Bitte gleich noch einmal versuchen.", "warn");
+    }
   }
 
   // ================= Start =================
