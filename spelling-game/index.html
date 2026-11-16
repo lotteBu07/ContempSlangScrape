@@ -51,6 +51,7 @@ const WORDS = [
     --mark: #ffe14d;         /* highlighter for tricky letters */
     --mark-ink: #13213d;
     --line: #c9d8ee;
+    --sky-top: #cfe8ff;
     --font-display: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
     --font-word: "Atkinson Hyperlegible", Verdana, system-ui, sans-serif;
     --radius: 22px;
@@ -60,14 +61,14 @@ const WORDS = [
       --bg: #0e1a33; --bg-dot: #16264a; --card: #1a2b50; --ink: #f2f6ff; --ink-soft: #b3c2e0;
       --accent: #ff8a3d; --accent-ink: #1a0d00; --accent-press: #ffa266;
       --good: #3ddc84; --good-soft: #143b2a; --try: #a98bff; --try-soft: #2c2557;
-      --mark: #ffe14d; --mark-ink: #13213d; --line: #2e4372; color-scheme: dark;
+      --mark: #ffe14d; --mark-ink: #13213d; --line: #2e4372; --sky-top: #24386a; color-scheme: dark;
     }
   }
   :root[data-theme="dark"] {
     --bg: #0e1a33; --bg-dot: #16264a; --card: #1a2b50; --ink: #f2f6ff; --ink-soft: #b3c2e0;
     --accent: #ff8a3d; --accent-ink: #1a0d00; --accent-press: #ffa266;
     --good: #3ddc84; --good-soft: #143b2a; --try: #a98bff; --try-soft: #2c2557;
-    --mark: #ffe14d; --mark-ink: #13213d; --line: #2e4372; color-scheme: dark;
+    --mark: #ffe14d; --mark-ink: #13213d; --line: #2e4372; --sky-top: #24386a; color-scheme: dark;
   }
 
   *, *::before, *::after { box-sizing: border-box; }
@@ -99,12 +100,22 @@ const WORDS = [
   .dot.now { border-color: var(--accent); transform: scale(1.15); }
   .dot.star { border-color: var(--good); background: var(--good-soft); }
   .dot.done { border-color: var(--try); background: var(--try-soft); }
-  .plant { width: 136px; height: 84px; background: var(--card); border: 3px solid var(--line); border-radius: 20px; display: grid; place-items: center; }
-  .plant svg { width: 124px; height: 76px; overflow: visible; }
-  .plant .sprout { transform-origin: 44px 64px; }
-  .plant.grow .sprout { animation: grow .6s ease-out; }
-  @keyframes grow { 0% { transform: scale(.9); } 60% { transform: scale(1.08); } 100% { transform: scale(1); } }
-  @media (prefers-reduced-motion: reduce) { .plant.grow .sprout { animation: none; } }
+  /* Garden: the pumpkin plant, wide and big above the play card */
+  .garden {
+    position: relative; width: 100%; height: clamp(120px, 34vw, 230px);
+    background: linear-gradient(var(--sky-top), var(--card) 70%);
+    border: 3px solid var(--line); border-radius: var(--radius); overflow: hidden;
+  }
+  .garden svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .garden .stage {
+    position: absolute; top: 8px; left: 12px; margin: 0;
+    font-size: 17px; font-weight: 600; color: var(--ink-soft);
+    background: var(--card); border-radius: 999px; padding: 2px 12px;
+  }
+  .garden .grower { transform-box: view-box; transform-origin: 120px 118px; }
+  .garden.grow .grower { animation: grow .7s ease-out; }
+  @keyframes grow { 0% { transform: scale(.96); } 60% { transform: scale(1.03); } 100% { transform: scale(1); } }
+  @media (prefers-reduced-motion: reduce) { .garden.grow .grower { animation: none; } }
 
   .card {
     background: var(--card);
@@ -220,8 +231,8 @@ const WORDS = [
 <main>
   <div class="bar">
     <div class="dots" id="dots" aria-label="Fortschritt"></div>
-    <div class="plant" id="plant" role="img" aria-label="Deine Pflanze" title="Dein Kürbis wächst bei jedem Wort."></div>
   </div>
+  <div class="garden" id="plant" role="img" aria-label="Dein Kürbis" title="Dein Kürbis wächst bei jedem Wort."></div>
   <section class="card" id="card" aria-live="polite"></section>
 </main>
 <div class="confetti" id="confetti" aria-hidden="true"></div>
@@ -239,8 +250,9 @@ const WORDS = [
   // The pumpkin plant grows with every finished word, right or wrong.
   // Words wrong on the first try make it slowly a bit yellow or brown.
   // It never dies: words right on the first try make it greener again.
-  // Each pumpkin: small after 5 words, big after 7, carved face after 10.
-  // Every 10 words a new pumpkin starts (up to 3).
+  // 10 stages, one per word: seed, sprout, seed leaves, first true leaf, vine,
+  // flowers, small pumpkin, big green pumpkin, turning orange, ripe, carved face.
+  // After that a new pumpkin grows on the vine every 10 words (up to 3).
   let growth = 0;                 // finished words
   let thirst = 0;                 // 0–6; colour changes every 2 points (never worse than yellow-brown)
   let round = [], idx = 0, results = [], firstTry = true, hideTimer = null, roundNo = 0;
@@ -362,71 +374,147 @@ const WORDS = [
     return { you: paint(typed, okA, "bad"), right: paint(right, okB, "tricky") };
   }
 
-  function drawPlant(bump) {
-    const LEAF = ["#3fbf5a", "#8fc23e", "#c4b43c", "#b38d48"];
-    const STEM = ["#2e8f43", "#6f973a", "#9a8a38", "#866b38"];
-    const health = Math.min(3, Math.floor(thirst / 2));
-    const base = 62, sx = 44;                                 // where the stem leaves the soil
-    const h = 8 + Math.min(growth, 12) * 3.6, top = base - h;
-    const droop = 22 - health * 9;                            // leaves point up when healthy, hang when thirsty
-    const lean = health * 2;
-    // broad pumpkin leaf: two overlapping lobes
-    const leaf = (x, y, side, size) => {
-      const cx = x + side * size * 0.95;
-      return `<g transform="rotate(${-side * droop} ${x} ${y})" fill="${LEAF[health]}">
-        <ellipse cx="${cx}" cy="${y}" rx="${size}" ry="${size * 0.72}"/>
-        <ellipse cx="${cx + side * size * 0.35}" cy="${y - size * 0.35}" rx="${size * 0.7}" ry="${size * 0.55}"/></g>`;
-    };
-    let leaves = "";
-    const n = Math.min(growth, 8);
-    for (let k = 0; k < n; k++) {
-      const t = (k + 1) / (n + 1);
-      leaves += leaf(sx + lean * t, base - t * h, k % 2 ? 1 : -1, 4.5 + Math.min(k, 4) * 0.6);
+  const STAGES = ["Samen", "Der Keim kommt", "Keimblätter", "Erstes echtes Blatt", "Die Ranke wächst",
+    "Blüten", "Kleiner Kürbis", "Grüner Kürbis", "Er wird orange", "Reif!", "Kürbis-Gesicht"];
+
+  // A pumpkin leaf: five rounded lobes with a fine toothed edge and a notch where the stalk joins.
+  function leafSVG(cx, cy, R, tilt, health) {
+    const FILL = ["#3d7a2c", "#5f8b2f", "#94913a", "#957746"][health];
+    const EDGE = ["#2c5c20", "#476b22", "#73702a", "#735a33"][health];
+    const VEIN = ["#79ad5a", "#93b45c", "#bdb566", "#bf9f6c"][health];
+    const flat = 0.72 - health * 0.06;                        // thirsty leaves hang flatter
+    let d = "";
+    for (let k = 0; k <= 90; k++) {
+      const t = k / 90 * 2 * Math.PI;
+      const lobe = 0.76 + 0.24 * Math.pow(Math.abs(Math.cos(2.5 * (t + Math.PI / 2))), 0.7);
+      const dist = Math.abs(((t - Math.PI / 2 + 3 * Math.PI) % (2 * Math.PI)) - Math.PI);
+      const notch = dist < 0.38 ? 0.3 + (dist / 0.38) * 0.7 : 1;
+      const r = R * lobe * notch * (k % 2 ? 0.96 : 1);
+      d += (k ? "L" : "M") + (cx + r * Math.cos(t)).toFixed(1) + " " + (cy + r * Math.sin(t) * flat).toFixed(1);
     }
-    const tx = sx + lean;
-    leaves += leaf(tx, top, -1, 4) + leaf(tx, top, 1, 4);
+    const veins = [-90, -18, 54, 126, 198].map(deg => {
+      const t = deg * Math.PI / 180, L = R * 0.78;
+      return `M${cx} ${cy + R * 0.18 * flat} L${(cx + L * Math.cos(t)).toFixed(1)} ${(cy + L * Math.sin(t) * flat).toFixed(1)}`;
+    }).join("");
+    return `<g transform="rotate(${tilt} ${cx} ${cy})"><path d="${d}Z" fill="${FILL}" stroke="${EDGE}" stroke-width=".8"/>
+      <path d="${veins}" stroke="${VEIN}" stroke-width=".9" fill="none" stroke-linecap="round"/></g>`;
+  }
 
-    // pumpkins: right of the stem first, then far right, then left
-    const SLOTS = [{ x: 80, end: 80 }, { x: 104, end: 104 }, { x: 16, end: 16 }];
-    let vines = "", pumpkins = "";
-    SLOTS.forEach((slot, i) => {
-      const age = growth - i * 10;                            // words since this pumpkin's turn began
-      if (age < 3) return;
-      const reach = Math.min(1, (age - 2) / 3);               // the vine creeps out over 3 words
-      const ex = sx + (slot.end - sx) * reach;
-      vines += `<path d="M${sx} ${base + 1} Q ${(sx + ex) / 2} ${base - 4} ${ex} ${base + 1}" stroke="${STEM[health]}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
-      if (age < 5) return;
-      const big = age >= 7, carved = age >= 10;
-      const rx = big ? 11 : 5, ry = big ? 8.5 : 4, cy = base + 2 - ry + 1;
-      const fill = big ? "#f28c1e" : "#c9b23a";               // a young pumpkin is still greenish
-      const rib = big ? "#d2700f" : "#a99630";
-      let face = "";
-      if (carved) {
-        const c = "#ffe14d", o = `stroke="#7a3500" stroke-width=".6"`;
-        face = `<path d="M${slot.x - 6} ${cy - 2} l2.6 -3.4 l2.6 3.4 z" fill="${c}" ${o}/>
-          <path d="M${slot.x + 0.8} ${cy - 2} l2.6 -3.4 l2.6 3.4 z" fill="${c}" ${o}/>
-          <path d="M${slot.x - 6} ${cy + 1.6} q6 5.4 12 0 l-2 1 l-2 -1 l-2 1.2 l-2 -1.2 l-2 1 z" fill="${c}" ${o}/>`;
-      }
-      pumpkins += `<g>
-        <path d="M${slot.x} ${cy - ry + 1} q1 -3 3 -3.6" stroke="#5f7a2a" stroke-width="2" fill="none" stroke-linecap="round"/>
-        <ellipse cx="${slot.x}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${fill}"/>
-        <ellipse cx="${slot.x}" cy="${cy}" rx="${rx * 0.45}" ry="${ry}" fill="none" stroke="${rib}" stroke-width="1"/>
-        ${face}</g>`;
-    });
+  // One pumpkin at x, at its own stage (5 = flower … 10 = carved face).
+  function pumpkinSVG(x, a, G) {
+    if (a < 5) return "";
+    if (a === 5) {                                            // female flower: tiny fruit under a yellow flower
+      return `<ellipse cx="${x}" cy="${G - 3}" rx="3.5" ry="2.8" fill="#6d9a3a"/>
+        ${flowerSVG(x + 5, G - 8, 7)}`;
+    }
+    if (a === 6) {                                            // fruit set: small striped green pumpkin, flower withered
+      return `<ellipse cx="${x}" cy="${G - 4}" rx="8" ry="6" fill="url(#pkGreen)"/>
+        <path d="M${x - 4} ${G - 9} Q${x} ${G - 11} ${x + 4} ${G - 9}" stroke="#a8c27a" stroke-width=".7" fill="none"/>
+        <path d="M${x + 8} ${G - 5} q4 -1 5 -4" stroke="#b58a3a" stroke-width="1.6" fill="none" stroke-linecap="round"/>`;
+    }
+    const rx = 27, ry = 19, cy = G + 1 - ry;
+    const grad = a === 7 ? "pkGreen" : a === 8 ? "pkTurn" : "pkRipe";
+    const rib = a === 7 ? "#2f5520" : a === 8 ? "#9c6a1c" : "#b0520d";
+    const stemCol = a >= 9 ? "#8b7d52" : "#5d7f2f";
+    const ribs = [0.78, 0.5, 0.2].map(f =>
+      `<ellipse cx="${x}" cy="${cy}" rx="${rx * f}" ry="${ry}" fill="none" stroke="${rib}" stroke-width="1.1" opacity=".55"/>`).join("");
+    let face = "";
+    if (a >= 10) {
+      const o = `fill="url(#glow)" stroke="#5a2504" stroke-width="1"`;
+      face = `<path d="M${x - 14} ${cy - 3} l5 -7 l5 7 z" ${o}/><path d="M${x + 4} ${cy - 3} l5 -7 l5 7 z" ${o}/>
+        <path d="M${x - 2.5} ${cy + 2} l2.5 -4 l2.5 4 z" ${o}/>
+        <path d="M${x - 15} ${cy + 5} Q${x} ${cy + 17} ${x + 15} ${cy + 5} l-3 2.5 l-2.5 -2 l-3 3 l-3 -3 l-3 3 l-3 -3 l-2.5 2 z" ${o}/>`;
+    }
+    return `<g>
+      <path d="M${x - 1} ${cy - ry + 3} C${x - 1} ${cy - ry - 4} ${x + 3} ${cy - ry - 7} ${x + 7} ${cy - ry - 8}" stroke="${stemCol}" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+      <ellipse cx="${x}" cy="${cy}" rx="${rx}" ry="${ry}" fill="url(#${grad})"/>
+      ${ribs}
+      <ellipse cx="${x - 9}" cy="${cy - 8}" rx="7" ry="3.5" fill="#fff" opacity=".18"/>
+      ${face}</g>`;
+  }
 
+  function flowerSVG(x, y, R) {
+    let d = "";
+    for (let k = 0; k < 10; k++) {
+      const t = -Math.PI / 2 + k * Math.PI / 5, r = k % 2 ? R * 0.55 : R;
+      d += (k ? "L" : "M") + (x + r * Math.cos(t)).toFixed(1) + " " + (y + r * Math.sin(t)).toFixed(1);
+    }
+    return `<path d="${d}Z" fill="#f7b91e" stroke="#d98a0c" stroke-width=".8" stroke-linejoin="round"/>
+      <circle cx="${x}" cy="${y}" r="${R * 0.28}" fill="#e2850d"/>`;
+  }
+
+  function drawPlant(bump) {
+    const health = Math.min(3, Math.floor(thirst / 2));
+    const VINE = ["#4b8634", "#6b9338", "#968c3a", "#866b3a"][health];
+    const s = Math.min(growth, 10);
+    const G = 118, X = 120;                                   // ground line, where the seed lies
+    let back = "", front = "";
+
+    if (s === 0) {                                            // seed in the soil
+      front = `<ellipse cx="${X}" cy="${G - 1}" rx="6" ry="3.4" fill="#eadfb8" stroke="#b9a77a" stroke-width=".8" transform="rotate(-18 ${X} ${G - 1})"/>`;
+    } else if (s === 1) {                                     // germinating: a hooked shoot with the seed coat
+      front = `<path d="M${X} ${G} C${X} ${G - 14} ${X + 9} ${G - 18} ${X + 10} ${G - 10}" stroke="#a9c97a" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <ellipse cx="${X + 10}" cy="${G - 9}" rx="4.5" ry="2.6" fill="#eadfb8" stroke="#b9a77a" stroke-width=".7" transform="rotate(70 ${X + 10} ${G - 9})"/>`;
+    } else {
+      const stemTop = G - 18;
+      const cotyledons = s <= 4
+        ? `<ellipse cx="${X - 10}" cy="${stemTop - 2}" rx="10" ry="4.6" fill="#86b95a" stroke="#5f8f3a" stroke-width=".7" transform="rotate(-12 ${X - 10} ${stemTop - 2})"/>
+           <ellipse cx="${X + 10}" cy="${stemTop - 2}" rx="10" ry="4.6" fill="#86b95a" stroke="#5f8f3a" stroke-width=".7" transform="rotate(12 ${X + 10} ${stemTop - 2})"/>`
+        : "";
+      // vine running right, later also left
+      const right = s >= 4 ? Math.min(300, X + (s === 4 ? 30 : 110 + Math.max(0, growth - 10) * 8)) : X;
+      const left = growth >= 23 ? Math.max(30, X - (growth - 22) * 14) : X;
+      if (right > X) back += `<path d="M${X} ${G - 2} C${(X + right) / 2} ${G - 7} ${(X + right) / 2} ${G + 1} ${right} ${G - 3}" stroke="${VINE}" stroke-width="3.2" fill="none" stroke-linecap="round"/>`;
+      if (left < X) back += `<path d="M${X} ${G - 2} C${(X + left) / 2} ${G - 7} ${(X + left) / 2} ${G + 1} ${left} ${G - 3}" stroke="${VINE}" stroke-width="3.2" fill="none" stroke-linecap="round"/>`;
+      // tendrils
+      [X + 45, X + 95, X + 150].filter(t => t < right - 5).forEach(t => {
+        back += `<path d="M${t} ${G - 3} q4 -6 8 -3 q3 3 -1 4 q-3 0 -1 -3" stroke="${VINE}" stroke-width="1" fill="none"/>`;
+      });
+      // the young plant's own stem
+      back += `<path d="M${X} ${G} L${X} ${stemTop}" stroke="${VINE}" stroke-width="3.2" stroke-linecap="round"/>`;
+
+      // leaves: first in the middle, then along the vine
+      const spots = [];
+      if (s >= 3) spots.push([X + 1, stemTop - 10, s === 3 ? 8 : 12, 0]);
+      if (s >= 4) spots.push([X - 9, stemTop - 16, 13, -14], [X + 12, stemTop - 20, 15, 12]);
+      const along = [[X + 32, 30, 17], [X + 58, 22, 15], [X + 100, 32, 18], [X + 128, 24, 16],
+                     [X + 160, 30, 17], [X + 190, 26, 16], [X - 40, 28, 17], [X - 72, 24, 16]];
+      along.forEach(([lx, hgt, R], k) => {
+        const onRight = lx > X;
+        if (s < 5 + Math.min(k, 3)) return;
+        if (onRight ? lx > right - 6 : lx < left + 6) return;
+        spots.push([lx, G - hgt, R, (k % 2 ? 10 : -10)]);
+        back += `<path d="M${lx} ${G - 3} Q${lx - 2} ${G - hgt / 2} ${lx} ${G - hgt + 2}" stroke="${VINE}" stroke-width="1.8" fill="none"/>`;
+      });
+      const droop = health * 4;
+      spots.forEach(([lx, ly, R, tilt]) => { back += leafSVG(lx, ly + health * 1.5, R * 1.2, tilt + (tilt < 0 ? -droop : droop), health); });
+      back = cotyledons + back;
+
+      // male flower on its own stalk while the plant is flowering
+      if (s === 5 || s === 6) back += `<path d="M${X + 72} ${G - 3} L${X + 72} ${G - 36}" stroke="${VINE}" stroke-width="1.6"/>` + flowerSVG(X + 72, G - 40, 9);
+
+      // pumpkins: one every 10 words, right of the plant first, then far right, then left
+      [X + 78, X + 160, X - 70].forEach((px, i) => { front += pumpkinSVG(px, growth - i * 10, G); });
+    }
+
+    const stageName = growth <= 10 ? STAGES[growth]
+      : growth % 10 === 0 ? STAGES[10] : "Kürbis Nr. " + (Math.floor(growth / 10) + 1) + ": " + (STAGES[growth % 10] || "");
     plantEl.innerHTML = `
-      <svg viewBox="0 0 120 80" aria-hidden="true">
-        <path d="M2 78 Q 16 62 60 61 Q 104 62 118 78 Z" fill="#8a5a33"/>
-        <circle cx="28" cy="71" r="1.6" fill="#6b4426"/><circle cx="62" cy="70" r="1.4" fill="#6b4426"/>
-        <circle cx="92" cy="73" r="1.6" fill="#6b4426"/><circle cx="48" cy="74" r="1.2" fill="#a8744a"/>
-        ${vines}
-        <g class="sprout">
-          <path d="M${sx} ${base + 1} Q ${sx + lean * 0.2} ${base - h / 2} ${tx} ${top}" stroke="${STEM[health]}" stroke-width="3" fill="none" stroke-linecap="round"/>
-          ${leaves}
-        </g>
-        ${pumpkins}
+      <p class="stage">${esc(stageName)}</p>
+      <svg viewBox="22 46 296 84" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+        <defs>
+          <radialGradient id="pkGreen" cx=".38" cy=".35" r=".75"><stop offset="0" stop-color="#7fa34c"/><stop offset="1" stop-color="#2f5a24"/></radialGradient>
+          <radialGradient id="pkTurn" cx=".38" cy=".35" r=".75"><stop offset="0" stop-color="#e9b24a"/><stop offset=".7" stop-color="#c78a2c"/><stop offset="1" stop-color="#7d7a2c"/></radialGradient>
+          <radialGradient id="pkRipe" cx=".38" cy=".35" r=".75"><stop offset="0" stop-color="#f7a24a"/><stop offset=".75" stop-color="#e0701a"/><stop offset="1" stop-color="#b4520c"/></radialGradient>
+          <radialGradient id="glow" cx=".5" cy=".5" r=".6"><stop offset="0" stop-color="#fff3b0"/><stop offset="1" stop-color="#f0a020"/></radialGradient>
+          <linearGradient id="soil" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7a4f2c"/><stop offset="1" stop-color="#5a3820"/></linearGradient>
+        </defs>
+        <path d="M-300 ${G} Q 80 ${G - 5} 165 ${G - 4} Q 250 ${G - 5} 640 ${G} L640 140 L-300 140 Z" fill="url(#soil)"/>
+        <g fill="#4a2e18"><circle cx="40" cy="${G + 6}" r="1.5"/><circle cx="96" cy="${G + 9}" r="1.2"/><circle cx="210" cy="${G + 7}" r="1.6"/><circle cx="280" cy="${G + 10}" r="1.3"/></g>
+        <g fill="#9a6a44"><circle cx="70" cy="${G + 4}" r="1.1"/><circle cx="160" cy="${G + 8}" r="1.3"/><circle cx="250" cy="${G + 5}" r="1"/></g>
+        <g class="grower">${back}${front}</g>
       </svg>`;
-    plantEl.setAttribute("aria-label", health === 0 ? "Dein Kürbis ist grün und gesund." : "Dein Kürbis braucht ein richtiges Wort.");
+    plantEl.setAttribute("aria-label", "Dein Kürbis: " + stageName + (health ? ". Er braucht ein richtiges Wort." : ""));
     if (bump) { plantEl.classList.remove("grow"); void plantEl.offsetWidth; plantEl.classList.add("grow"); }
   }
 
