@@ -262,19 +262,22 @@ const WORDS = [
   const clean = s => s.toLowerCase().replace(/[’`´]/g, "'").replace(/[?!.,]/g, "").replace(/\s+/g, " ").trim();
   const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-  // ---------- reading aloud (British English) ----------
+  // ---------- reading aloud ----------
+  // English words: British English voice. German words: native German voice.
   // 1st choice: Claude's voice (works in Chrome/Edge on claude.ai).
   // Backup: the browser's own British voice (iPhone, Safari, opened as a file).
   let tts = null, ttsOff = false, turn = 0, keepUtter = null;
   const CLAUDE_VOICES = ["airy", "rounded", "glassy", "buttery"];   // alternate voices
   try { window.claude?.use?.("tts").then(t => { tts = t; }).catch(() => {}); } catch (e) {}
 
-  let gbVoices = [];
+  let gbVoices = [], deVoices = [];
   function loadVoices() {
     try {
       const all = speechSynthesis.getVoices();
       gbVoices = all.filter(v => /^en[-_]GB/i.test(v.lang));
       if (!gbVoices.length) gbVoices = all.filter(v => /^en/i.test(v.lang));
+      deVoices = all.filter(v => /^de[-_]DE/i.test(v.lang));
+      if (!deVoices.length) deVoices = all.filter(v => /^de/i.test(v.lang));
     } catch (e) {}
   }
   if ("speechSynthesis" in window) {
@@ -282,13 +285,14 @@ const WORDS = [
     try { speechSynthesis.addEventListener("voiceschanged", loadVoices); } catch (e) {}
   }
 
-  function browserSpeak(text, btn) {
+  function browserSpeak(text, btn, lang) {
     if (!("speechSynthesis" in window)) { noVoice(btn); return; }
-    if (!gbVoices.length) loadVoices();
+    if (!gbVoices.length || !deVoices.length) loadVoices();
+    const list = lang === "de" ? deVoices : gbVoices;
     if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = "en-GB"; u.rate = 0.85;
-    if (gbVoices.length) u.voice = gbVoices[turn % gbVoices.length];   // alternate voices
+    u.lang = lang === "de" ? "de-DE" : "en-GB"; u.rate = 0.85;
+    if (list.length) u.voice = list[turn % list.length];   // alternate voices of that language
     u.onstart = () => btn.classList.add("talking");
     u.onend = u.onerror = () => btn.classList.remove("talking");
     keepUtter = u;                      // iPhone: keep a reference or it may stay silent
@@ -301,22 +305,22 @@ const WORDS = [
     btn.disabled = true;
   }
 
-  function speak(text, btn) {
+  function speak(text, btn, lang) {
     turn++;
     if (tts && !ttsOff) {
       btn.classList.add("talking");
-      tts.speak(text, { voice: CLAUDE_VOICES[turn % CLAUDE_VOICES.length], language: "en-GB", rate: 0.85 })
+      tts.speak(text, { voice: CLAUDE_VOICES[turn % CLAUDE_VOICES.length], language: lang === "de" ? "de-DE" : "en-GB", rate: 0.85 })
         .then(() => btn.classList.remove("talking"))
         .catch(err => {
           btn.classList.remove("talking");
           const code = err && err.code;
           if (code === "not_granted") { ttsOff = true; btn.hidden = true; return; }   // viewer turned it off
           if (code === "stopped" || code === "busy" || code === "no_gesture" || code === "rate_limited") return;
-          ttsOff = true; browserSpeak(text, btn);                                   // service failed: use browser voice
+          ttsOff = true; browserSpeak(text, btn, lang);                                   // service failed: use browser voice
         });
       return;
     }
-    browserSpeak(text, btn);
+    browserSpeak(text, btn, lang);
   }
 
   // dir "en": German shown, he types English (Teil 1)
@@ -573,7 +577,8 @@ const WORDS = [
       </form>`;
     const input = document.getElementById("answer");
     const sayBtn = document.getElementById("say");
-    sayBtn.onclick = () => speak(w.en, sayBtn);       // always reads the English word
+    // reads the word he has to write: English in part 1, German (German voice) in part 2
+    sayBtn.onclick = () => it.dir === "en" ? speak(w.en, sayBtn, "en") : speak(w.de, sayBtn, "de");
     document.getElementById("f").onsubmit = e => {
       e.preventDefault();
       const typed = input.value.trim();
