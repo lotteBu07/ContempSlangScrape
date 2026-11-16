@@ -21,7 +21,7 @@ const WORDS = [
   { de: "Null",                         en: "zero",                why: "Zero fängt mit z an, aber man spricht es wie s.",      whyDe: "Null hat am Ende zwei l." },
   { de: "Vier",                         en: "four",                why: "Four hat ein u, wie bei your.",                        whyDe: "Vier fängt mit v an und hat ie." },
   { de: "Acht",                         en: "eight",               why: "Eight hat das gh, wie night.",                         whyDe: "Acht hat ch, wie lachen." },
-  { de: "Englisch",                     en: "English",             why: "Am Ende steht sh, nicht sch. Und vorne ein großes E.", whyDe: "Englisch endet mit sch. Auf Englisch ist es nur sh." },
+  { de: "Englisch",                     en: "English",             why: "Am Ende steht sh, nicht sch.", whyDe: "Englisch endet mit sch. Auf Englisch ist es nur sh." },
   { de: "Tschüss",                      en: "See you later",       why: "See hat zwei e. Later hat nur ein t.",                 whyDe: "Tschüss fängt mit tsch an und endet mit ss." },
   { de: "Danke",                        en: "Thank you",           why: "Thank fängt mit th an und endet mit nk.",              whyDe: "Danke hat nk, wie trinken." },
   { de: "das, dies",                    en: "this",                why: "This fängt mit th an, wie the.",                       whyDe: "Dies hat ie, wie vier. Das hat nur ein s." },
@@ -274,7 +274,7 @@ const WORDS = [
   }
 
   function noVoice(btn) {
-    btn.textContent = "Kein Ton in diesem Browser";
+    btn.textContent = "Kein Ton";
     btn.disabled = true;
   }
 
@@ -392,10 +392,10 @@ const WORDS = [
     const part = it.dir === "en" ? 1 : 2;
     const inPart = round.slice(0, idx + 1).filter(x => x.dir === it.dir).length;
     const ofPart = round.filter(x => x.dir === it.dir).length;
-    const hello = !again && idx === 0 && roundNo === 1 ? `<p class="hello">Hallo Frederik! Schreib das Wort auf Englisch.</p>` : "";
+    const hello = !again && idx === 0 && roundNo === 1 ? `<p class="hello">Hallo Frederik!</p>` : "";
     card.innerHTML = `
       ${hello}
-      <p class="label">${again ? "Nochmal! Schreib es aus dem Kopf." : `Teil ${part} · Wort ${inPart} von ${ofPart}`}</p>
+      <p class="label">${again ? "Noch einmal! Aus dem Kopf." : `Teil ${part} · Wort ${inPart} von ${ofPart}`}</p>
       <p class="lang">${it.dir === "en" ? "Deutsch → Englisch" : "Englisch → Deutsch"}</p>
       <p class="hint pop">${esc(shown(it))}</p>
       <button type="button" class="btn-ghost" id="say">🔊 Anhören</button>
@@ -434,10 +434,10 @@ const WORDS = [
     card.innerHTML = `
       <p class="msg try pop">Fast!</p>
       <div class="compare">
-        <div class="row you"><span class="who">Du hast geschrieben:</span><span class="word">${d.you}</span></div>
-        <div class="row right"><span class="who">So schreibt man es:</span><span class="word">${d.right}</span></div>
+        <div class="row you"><span class="who">Deins:</span><span class="word">${d.you}</span></div>
+        <div class="row right"><span class="who">Richtig:</span><span class="word">${d.right}</span></div>
       </div>
-      <p class="label">Schau genau hin! Merk dir das Wort.</p>
+      <p class="label">Merke dir das Wort!</p>
       <div class="timer" id="timer"><i></i></div>`;
     requestAnimationFrame(() => document.getElementById("timer").classList.add("run"));
     hideTimer = setTimeout(() => askWord(true), SHOW_MS);
@@ -459,7 +459,7 @@ const WORDS = [
       results[idx] = "done";
       drawDots();
       card.innerHTML = `
-        <p class="msg good pop">Jetzt stimmt's! 🎉</p>
+        <p class="msg good pop">Jetzt richtig! 🎉</p>
         <p class="word">${esc(solution)}</p>
         <p class="why">${esc(it.dir === "en" ? w.why : w.whyDe)}</p>
         <button class="btn green" type="button" id="next">Weiter →</button>`;
@@ -482,10 +482,9 @@ const WORDS = [
     drawDots();
     card.innerHTML = `
       <p class="msg good pop">Teil 1 geschafft! 👍</p>
-      <p class="label">Jetzt andersrum:</p>
+      <p class="label">Jetzt umgekehrt:</p>
       <p class="hint">Englisch → Deutsch</p>
-      <p class="hello">Du siehst das englische Wort. Schreib es auf Deutsch.</p>
-      <button class="btn" type="button" id="go">Los geht's ▶</button>`;
+      <button class="btn" type="button" id="go">Los ▶</button>`;
     const go = document.getElementById("go");
     go.onclick = () => askWord();
     go.focus({ preventScroll: true });
@@ -498,8 +497,8 @@ const WORDS = [
     card.innerHTML = `
       <p class="msg good pop">Runde geschafft! 🎉</p>
       <div class="stars" aria-label="${stars} Sterne">${"⭐".repeat(stars)}${"☆".repeat(words - stars)}</div>
-      <p class="score">${stars} von ${words} Wörtern beim ersten Mal richtig.</p>
-      <p class="label">${stars === words ? "Alles richtig. Wow!" : "Alle Wörter am Ende richtig. Gut gemacht!"}</p>
+      <p class="score">${stars} von ${words} sofort richtig.</p>
+      <p class="label">${stars === words ? "Alles richtig. Wow!" : "Gut gemacht!"}</p>
       <button class="btn" type="button" id="again">Neue Runde ▶</button>`;
     confetti(30);
     document.getElementById("again").onclick = startRound;
