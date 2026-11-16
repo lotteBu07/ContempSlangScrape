@@ -155,7 +155,7 @@ const WORDS = [
     box-shadow: 0 6px 0 var(--accent-press);
     transition: transform .08s ease, box-shadow .08s ease, filter .15s ease;
   }
-  .btn:hover { filter: brightness(1.08); transform: translateY(-2px); box-shadow: 0 8px 0 var(--accent-press); }
+  @media (hover: hover) { .btn:hover { filter: brightness(1.08); transform: translateY(-2px); box-shadow: 0 8px 0 var(--accent-press); } }
   .btn:active { transform: translateY(5px); box-shadow: 0 1px 0 var(--accent-press); }
   .btn.green { background: var(--good); box-shadow: 0 6px 0 color-mix(in srgb, var(--good) 70%, #000); color: var(--badge-ink); }
   .btn.green:active { box-shadow: 0 1px 0 color-mix(in srgb, var(--good) 70%, #000); }
@@ -165,7 +165,7 @@ const WORDS = [
     background: var(--card); color: var(--ink); border: 3px solid var(--line);
     transition: transform .08s ease, border-color .15s ease, background .15s ease;
   }
-  .btn-ghost:hover { border-color: var(--accent); transform: translateY(-2px); }
+  @media (hover: hover) { .btn-ghost:hover { border-color: var(--accent); transform: translateY(-2px); } }
   .btn-ghost.talking { border-color: var(--good); background: var(--good-soft); }
   .btn-ghost:disabled { opacity: .6; cursor: default; transform: none; }
   .btn-ghost:active { transform: translateY(2px) scale(.97); background: var(--bg); }
@@ -245,6 +245,31 @@ const WORDS = [
     .confetti { display: none; }
     .timer.run > i { animation-duration: 3s; }
     .btn, .btn-ghost { transition: none; }
+  }
+  /* iPad and other tablets (touch screens, 700px and wider): bigger everything */
+  @media (min-width: 700px) and (pointer: coarse) {
+    main { max-width: 860px; gap: 20px; }
+    .dots { gap: 10px; }
+    .dot { width: 40px; height: 40px; font-size: 20px; }
+    .dot.gap { margin-left: 22px; }
+    .where { font-size: 18px; }
+    .garden { height: clamp(240px, 32vw, 320px); }
+    .card { padding: 36px 32px; gap: 24px; }
+    .btn { min-height: 76px; font-size: 32px; padding: 14px 48px; }
+    .btn-ghost { min-height: 64px; font-size: 26px; padding: 8px 28px; }
+  }
+  /* iPad held sideways: garden on the left, word card on the right,
+     so the card starts high and the keyboard does not cover it */
+  @media (min-width: 900px) and (orientation: landscape) and (pointer: coarse) {
+    main {
+      max-width: 1240px; display: grid; grid-template-columns: 5fr 6fr; align-items: start;
+      grid-template-areas: "bar bar" "where where" "garden card"; column-gap: 24px; row-gap: 16px;
+    }
+    .bar { grid-area: bar; }
+    .where { grid-area: where; }
+    .garden { grid-area: garden; height: 250px; position: sticky; top: max(16px, env(safe-area-inset-top, 0px)); }
+    .card { grid-area: card; padding: 26px 28px; gap: 18px; }
+    .hint { font-size: clamp(40px, 5.5vw, 68px); }
   }
   @media (max-width: 420px) {
     .card { padding: 22px 14px; }
@@ -712,6 +737,7 @@ const WORDS = [
     document.getElementById("again").onclick = startRound;
   }
 
+  document.addEventListener("touchstart", () => {}, { passive: true });   // makes buttons react on tap (iPad, iPhone)
   drawPlant();
   startRound();
 })();
